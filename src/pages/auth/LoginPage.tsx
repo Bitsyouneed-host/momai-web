@@ -34,7 +34,7 @@ export default function LoginPage() {
     if (!email.trim()) return;
     setIsLoading(true);
     try {
-      const { data } = await authApi.sendEmailCode(email.trim());
+      const { data } = await authApi.sendEmailCode(email.trim().toLowerCase());
       if (data.success) {
         toast.success('Verification code sent to your email');
         setStep('code');
@@ -50,14 +50,14 @@ export default function LoginPage() {
   };
 
   const handleVerifyCode = async () => {
-    if (code.length !== 6) return;
+    const trimmedCode = code.trim();
+    if (trimmedCode.length !== 6) return;
     setIsLoading(true);
     try {
-      const { data } = await authApi.verifyEmailCode(email.trim(), code);
+      const { data } = await authApi.verifyEmailCode(email.trim().toLowerCase(), trimmedCode);
       if (data.success && data.data) {
         const { accessToken, refreshToken, user } = data.data;
         if (!user.firstName) {
-          // Store tokens temporarily for profile completion
           localStorage.setItem('accessToken', accessToken);
           localStorage.setItem('refreshToken', refreshToken);
           setNeedsProfile(true);
@@ -68,11 +68,14 @@ export default function LoginPage() {
           navigate('/', { replace: true });
         }
       } else {
-        toast.error(data.message || 'Invalid code');
+        toast.error(data.message || 'Verification failed');
       }
     } catch (err: unknown) {
-      const error = err as { response?: { data?: { message?: string } } };
-      toast.error(error.response?.data?.message || 'Invalid code');
+      const error = err as { response?: { data?: { message?: string; errors?: Array<{ field: string; message: string }> } } };
+      const msg = error.response?.data?.message
+        || error.response?.data?.errors?.[0]?.message
+        || (err instanceof Error ? err.message : 'Verification failed');
+      toast.error(msg);
     } finally {
       setIsLoading(false);
     }
@@ -209,17 +212,36 @@ export default function LoginPage() {
               <PrimaryButton
                 onClick={handleVerifyCode}
                 isLoading={isLoading}
-                disabled={code.length !== 6}
+                disabled={code.trim().length !== 6}
               >
                 Verify Code
               </PrimaryButton>
 
-              <button
-                onClick={() => { setStep('email'); setCode(''); }}
-                className="w-full text-center text-sm text-text-secondary hover:text-primary-deep transition-colors"
-              >
-                Use a different email
-              </button>
+              <div className="flex items-center justify-between">
+                <button
+                  onClick={() => { setStep('email'); setCode(''); }}
+                  className="text-sm text-text-secondary hover:text-primary-deep transition-colors"
+                >
+                  Different email
+                </button>
+                <button
+                  onClick={async () => {
+                    setCode('');
+                    setIsLoading(true);
+                    try {
+                      await authApi.sendEmailCode(email.trim().toLowerCase());
+                      toast.success('New code sent');
+                    } catch {
+                      toast.error('Failed to resend code');
+                    } finally {
+                      setIsLoading(false);
+                    }
+                  }}
+                  className="text-sm text-primary-deep hover:text-primary-dark font-medium transition-colors"
+                >
+                  Resend Code
+                </button>
+              </div>
             </div>
           )}
 
