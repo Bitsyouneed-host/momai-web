@@ -5,7 +5,9 @@ import type { User } from '../types/user';
 interface AuthTokens {
   accessToken: string;
   refreshToken: string;
-  user: User;
+  user: User | null;
+  requiresProfile?: boolean;
+  isNewUser?: boolean;
 }
 
 interface EmailCodeData {

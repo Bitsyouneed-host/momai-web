@@ -56,8 +56,8 @@ export default function LoginPage() {
     try {
       const { data } = await authApi.verifyEmailCode(email.trim().toLowerCase(), trimmedCode);
       if (data.success && data.data) {
-        const { accessToken, refreshToken, user } = data.data;
-        if (!user.firstName) {
+        const { accessToken, refreshToken, user, requiresProfile } = data.data;
+        if (requiresProfile || !user?.firstName) {
           localStorage.setItem('accessToken', accessToken);
           localStorage.setItem('refreshToken', refreshToken);
           setNeedsProfile(true);
@@ -111,8 +111,8 @@ export default function LoginPage() {
       const walletAddress = accounts[0];
       const { data } = await authApi.walletLogin(walletAddress);
       if (data.success && data.data) {
-        const { accessToken, refreshToken, user } = data.data;
-        if (!user.firstName) {
+        const { accessToken, refreshToken, user, requiresProfile } = data.data;
+        if (requiresProfile || !user?.firstName) {
           localStorage.setItem('accessToken', accessToken);
           localStorage.setItem('refreshToken', refreshToken);
           setNeedsProfile(true);
