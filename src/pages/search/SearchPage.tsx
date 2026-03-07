@@ -11,8 +11,13 @@ import { providersApi } from '../../api/providers';
 import type { SearchResult, PlaceDetails } from '../../types/search';
 
 const providerTypes = [
-  'Doctor', 'Dentist', 'Hospital', 'Pharmacy', 'Veterinarian',
-  'Salon', 'Plumber', 'Electrician', 'Mechanic', 'Lawyer',
+  { label: 'Doctor', type: 'doctor' },
+  { label: 'Dentist', type: 'dentist' },
+  { label: 'Hospital', type: 'hospital' },
+  { label: 'Pharmacy', type: 'pharmacy' },
+  { label: 'Physical Therapy', type: 'physiotherapist' },
+  { label: 'Veterinarian', type: 'veterinary_care' },
+  { label: 'Health', type: 'health' },
 ];
 
 export default function SearchPage() {
@@ -23,13 +28,15 @@ export default function SearchPage() {
   const [selectedPlace, setSelectedPlace] = useState<PlaceDetails | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
 
-  const handleSearch = async () => {
-    if (!query.trim() && !selectedType) return;
+  const handleSearch = async (overrideQuery?: string, overrideType?: string) => {
+    const q = overrideQuery ?? query;
+    const t = overrideType ?? selectedType;
+    if (!q.trim() && !t) return;
     setIsLoading(true);
     try {
       const { data } = await searchApi.providers({
-        query: query.trim() || selectedType,
-        type: selectedType.toLowerCase(),
+        query: q.trim() || t,
+        type: t || undefined,
       });
       if (data.success && data.data) {
         const raw = data.data;
@@ -88,30 +95,32 @@ export default function SearchPage() {
             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
           />
         </div>
-        <PrimaryButton onClick={handleSearch} isLoading={isLoading} fullWidth={false} className="!px-4">
+        <PrimaryButton onClick={() => handleSearch()} isLoading={isLoading} fullWidth={false} className="!px-4">
           <Search size={18} />
         </PrimaryButton>
       </div>
 
       {/* Type filters */}
       <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
-        {providerTypes.map((type) => (
+        {providerTypes.map((pt) => (
           <button
-            key={type}
+            key={pt.type}
             onClick={() => {
-              setSelectedType(selectedType === type ? '' : type);
-              if (selectedType !== type) {
-                setQuery(type);
-                setTimeout(handleSearch, 0);
+              const isDeselecting = selectedType === pt.type;
+              const newType = isDeselecting ? '' : pt.type;
+              setSelectedType(newType);
+              if (!isDeselecting) {
+                setQuery(pt.label);
+                handleSearch(pt.label, pt.type);
               }
             }}
             className={`shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-              selectedType === type
+              selectedType === pt.type
                 ? 'bg-primary text-white'
                 : 'bg-white/80 text-text-secondary border border-primary/20'
             }`}
           >
-            {type}
+            {pt.label}
           </button>
         ))}
       </div>

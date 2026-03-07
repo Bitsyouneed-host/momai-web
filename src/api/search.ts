@@ -3,8 +3,10 @@ import type { APIResponse } from '../types/api';
 import type { SearchResult, PlaceDetails } from '../types/search';
 
 export const searchApi = {
-  providers: (params: { query?: string; type?: string; lat?: number; lng?: number }) =>
-    client.get<APIResponse<SearchResult[]>>('/search/providers', { params }),
+  providers: (params: { query?: string; type?: string; lat?: number; lng?: number }) => {
+    const { query: q, ...rest } = params;
+    return client.get<APIResponse<SearchResult[]>>('/search/providers', { params: { q, ...rest } });
+  },
 
   nearby: (params: { type: string; lat: number; lng: number; radius?: number }) =>
     client.get<APIResponse<SearchResult[]>>('/search/nearby', { params }),
