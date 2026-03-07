@@ -11,7 +11,6 @@ import { usersApi } from '../../api/users';
 export default function ProfilePage() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
-  const setUser = useAuthStore((s) => s.setUser);
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -67,7 +66,8 @@ export default function ProfilePage() {
       } as Record<string, unknown>);
 
       if (data.success && data.data) {
-        setUser(data.data);
+        // Re-fetch user to get the correctly mapped shape
+        await useAuthStore.getState().fetchUser();
         toast.success('Profile updated');
       }
     } catch {

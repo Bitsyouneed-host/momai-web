@@ -38,8 +38,9 @@ export default function NewBookingPage() {
     try {
       // Pre-check if user can book
       const preCheck = await bookingApi.preCheck();
-      if (!preCheck.data.data?.canBook) {
-        toast.error(preCheck.data.data?.reason || 'Cannot book at this time');
+      const preCheckData = preCheck.data as unknown as Record<string, unknown>;
+      if (!preCheckData.canBook) {
+        toast.error((preCheckData.message as string) || 'Cannot book at this time');
         return;
       }
 
@@ -54,7 +55,10 @@ export default function NewBookingPage() {
 
       if (data.success && data.data) {
         toast.success('Booking request created! AI is working on it.');
-        navigate(`/booking/${data.data._id}`);
+        const raw = data.data;
+        const booking = (raw as unknown as Record<string, unknown>).bookingRequest || raw;
+        const bookingId = (booking as Record<string, unknown>)._id || (booking as Record<string, unknown>).id || '';
+        navigate(`/booking/${bookingId}`);
       } else {
         toast.error(data.message || 'Failed to create booking');
       }

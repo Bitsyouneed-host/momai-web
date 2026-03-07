@@ -10,7 +10,6 @@ import { usersApi } from '../../api/users';
 export default function InsurancePage() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
-  const setUser = useAuthStore((s) => s.setUser);
 
   const [hasInsurance, setHasInsurance] = useState(user?.insurance?.hasInsurance || false);
   const [provider, setProvider] = useState(user?.insurance?.provider || '');
@@ -41,8 +40,8 @@ export default function InsurancePage() {
           memberId: hasInsurance ? memberId.trim() : undefined,
         },
       });
-      if (data.success && data.data) {
-        setUser(data.data);
+      if (data.success) {
+        await useAuthStore.getState().fetchUser();
         toast.success('Insurance info saved');
         navigate('/settings');
       } else {

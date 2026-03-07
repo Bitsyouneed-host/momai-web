@@ -32,7 +32,9 @@ export default function SearchPage() {
         type: selectedType.toLowerCase(),
       });
       if (data.success && data.data) {
-        setResults(data.data);
+        const raw = data.data;
+        const list = (Array.isArray(raw) ? raw : (raw as unknown as Record<string, unknown>).providers as SearchResult[]) || [];
+        setResults(list);
       }
     } catch {
       toast.error('Search failed. Please try again.');
@@ -45,7 +47,9 @@ export default function SearchPage() {
     try {
       const { data } = await searchApi.placeDetails(placeId);
       if (data.success && data.data) {
-        setSelectedPlace(data.data);
+        const raw = data.data;
+        const detail = (raw as unknown as Record<string, unknown>).provider || raw;
+        setSelectedPlace(detail as PlaceDetails);
         setIsDetailOpen(true);
       }
     } catch {

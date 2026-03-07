@@ -26,7 +26,11 @@ export default function WalletPage() {
 
   useEffect(() => {
     tokensApi.getHistory({ limit: 20 }).then(({ data }) => {
-      if (data.success && data.data) setHistory(data.data);
+      if (data.success && data.data) {
+        const raw = data.data;
+        const list = (Array.isArray(raw) ? raw : (raw as unknown as Record<string, unknown>).spends as TokenSpend[]) || [];
+        setHistory(list);
+      }
     }).catch(() => {}).finally(() => setIsLoading(false));
 
     if (walletAddress) {

@@ -46,8 +46,10 @@ export default function MomMePage() {
     setStep('searching');
     try {
       const { data } = await searchApi.providers({ type: selectedType, query: `${selectedType} near ${zipCode}` });
-      if (data.success && data.data && data.data.length > 0) {
-        setResults(data.data);
+      if (data.success && data.data) {
+        const raw = data.data;
+        const list = (Array.isArray(raw) ? raw : (raw as unknown as Record<string, unknown>).providers as SearchResult[]) || [];
+        setResults(list);
         setStep('results');
       } else {
         setResults([]);
@@ -66,9 +68,12 @@ export default function MomMePage() {
     if (!provider.phone && provider.placeId) {
       try {
         const { data } = await searchApi.placeDetails(provider.placeId);
-        if (data.success && data.data?.phone) {
-          const updated = { ...provider, phone: data.data.phone };
-          setSelectedProvider(updated);
+        if (data.success && data.data) {
+          const detail = (data.data as unknown as Record<string, unknown>).provider || data.data;
+          const phone = (detail as Record<string, unknown>).phone as string | undefined;
+          if (phone) {
+            setSelectedProvider({ ...provider, phone });
+          }
         }
       } catch { /* use what we have */ }
     }
@@ -82,8 +87,9 @@ export default function MomMePage() {
     // Pre-check
     try {
       const { data: preCheck } = await bookingApi.preCheck();
-      if (!preCheck.success || !preCheck.data?.canBook) {
-        toast.error(preCheck.data?.reason || 'Unable to book right now');
+      const preCheckData = preCheck as unknown as Record<string, unknown>;
+      if (!preCheck.success || !preCheckData.canBook) {
+        toast.error((preCheckData.message as string) || 'Unable to book right now');
         return;
       }
     } catch {
@@ -115,7 +121,9 @@ export default function MomMePage() {
       });
 
       if (data.success && data.data) {
-        setBookingId(data.data._id);
+        const raw = data.data;
+        const booking = (raw as unknown as Record<string, unknown>).bookingRequest || raw;
+        setBookingId((booking as Record<string, unknown>)._id as string || (booking as Record<string, unknown>).id as string || '');
         setStep('complete');
       } else {
         setError(data.message || 'Booking failed');

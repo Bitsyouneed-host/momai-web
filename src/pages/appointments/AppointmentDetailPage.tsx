@@ -18,7 +18,11 @@ export default function AppointmentDetailPage() {
   useEffect(() => {
     if (!id) return;
     appointmentsApi.get(id).then(({ data }) => {
-      if (data.success && data.data) setApt(data.data);
+      if (data.success && data.data) {
+        const raw = data.data;
+        const item = (raw as unknown as Record<string, unknown>).appointment || raw;
+        setApt(item as Appointment);
+      }
     }).catch(() => toast.error('Failed to load appointment'))
       .finally(() => setIsLoading(false));
   }, [id]);

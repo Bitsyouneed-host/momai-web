@@ -26,7 +26,7 @@ const statusColors: Record<string, string> = {
 
 export default function StatusBadge({ status, className = '' }: StatusBadgeProps) {
   const colors = statusColors[status] || 'bg-gray-100 text-gray-600';
-  const displayStatus = status.replace(/[-_]/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
+  const displayStatus = (status || 'unknown').replace(/[-_]/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
 
   return (
     <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${colors} ${className}`}>

@@ -19,7 +19,9 @@ export default function BookingDetailPage() {
     if (!id) return;
     bookingApi.get(id).then(({ data }) => {
       if (data.success && data.data) {
-        setRequest(data.data);
+        const raw = data.data;
+        const item = (raw as unknown as Record<string, unknown>).bookingRequest || raw;
+        setRequest(item as BookingRequest);
       }
     }).catch(() => toast.error('Failed to load booking'))
       .finally(() => setIsLoading(false));
