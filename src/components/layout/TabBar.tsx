@@ -1,9 +1,10 @@
 import { NavLink } from 'react-router-dom';
-import { Home, Search, Wand2, Calendar, Settings } from 'lucide-react';
+import { Home, Search, Wand2, Calendar, Settings, Users } from 'lucide-react';
 
 const tabs = [
   { to: '/', icon: Home, label: 'Home' },
   { to: '/search', icon: Search, label: 'Search' },
+  { to: '/providers', icon: Users, label: 'Providers' },
   { to: '/booking', icon: Wand2, label: 'MOM AI' },
   { to: '/appointments', icon: Calendar, label: 'Appointments' },
   { to: '/settings', icon: Settings, label: 'Settings' },
@@ -21,13 +22,13 @@ export default function TabBar() {
               to={to}
               end={to === '/'}
               className={({ isActive }) =>
-                `flex flex-col items-center gap-0.5 px-3 py-1 transition-colors ${
+                `flex flex-col items-center gap-0.5 px-2 py-1 transition-colors ${
                   isActive ? 'text-primary-deep' : 'text-muted'
                 }`
               }
             >
-              <Icon size={22} />
-              <span className="text-[10px] font-medium">{label}</span>
+              <Icon size={20} />
+              <span className="text-[9px] font-medium">{label}</span>
             </NavLink>
           ))}
         </div>

@@ -75,7 +75,7 @@ export default function BookingPage() {
 
       {/* MOM ME Hero */}
       <button
-        onClick={() => navigate('/booking/new')}
+        onClick={() => navigate('/mom-me')}
         className="w-full p-5 rounded-2xl bg-gradient-to-r from-accent to-pink-500 text-white shadow-lg hover:shadow-xl transition-all active:scale-[0.98]"
       >
         <div className="flex items-center gap-3">

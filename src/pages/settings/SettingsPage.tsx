@@ -1,5 +1,8 @@
 import { useNavigate } from 'react-router-dom';
-import { User, Shield, Bell, CreditCard, Wallet, LogOut, ChevronRight, Lock } from 'lucide-react';
+import {
+  User, Shield, Bell, CreditCard, Wallet, LogOut, ChevronRight, Lock,
+  Key, FileText, Scale, Mail, Calendar, Info,
+} from 'lucide-react';
 import GlassCard from '../../components/ui/GlassCard';
 import { useAuthStore } from '../../stores/authStore';
 import { useSubscriptionStore } from '../../stores/subscriptionStore';
@@ -41,7 +44,7 @@ export default function SettingsPage() {
       </GlassCard>
 
       {/* Insurance */}
-      <GlassCard onClick={() => navigate('/settings/profile')}>
+      <GlassCard onClick={() => navigate('/settings/insurance')}>
         <div className="flex items-center gap-3">
           <Shield size={18} className={user?.insurance?.hasInsurance ? 'text-success' : 'text-muted'} />
           <span className="flex-1 text-sm font-medium text-text-primary">Insurance</span>
@@ -87,6 +90,24 @@ export default function SettingsPage() {
         </div>
       </GlassCard>
 
+      {/* Calendar Integration */}
+      <GlassCard>
+        <div className="flex items-center gap-3">
+          <Calendar size={18} className="text-primary-deep" />
+          <span className="flex-1 text-sm font-medium text-text-primary">Calendar Integration</span>
+          <span className="text-xs text-muted">Coming Soon</span>
+        </div>
+      </GlassCard>
+
+      {/* Change Password */}
+      <GlassCard onClick={() => navigate('/settings/password')}>
+        <div className="flex items-center gap-3">
+          <Key size={18} className="text-text-secondary" />
+          <span className="flex-1 text-sm font-medium text-text-primary">Change Password</span>
+          <ChevronRight size={18} className="text-muted" />
+        </div>
+      </GlassCard>
+
       {/* Security */}
       <GlassCard>
         <div className="flex items-center gap-3">
@@ -96,10 +117,42 @@ export default function SettingsPage() {
         </div>
       </GlassCard>
 
-      {/* App Info */}
-      <div className="text-center text-xs text-muted pt-2">
-        MOM AI Web v1.0.0
+      {/* Legal & Support */}
+      <div className="pt-2">
+        <h3 className="text-xs font-semibold text-muted uppercase tracking-wider mb-2 px-1">Legal & Support</h3>
+        <div className="space-y-2">
+          <GlassCard onClick={() => navigate('/settings/privacy')}>
+            <div className="flex items-center gap-3">
+              <FileText size={18} className="text-text-secondary" />
+              <span className="flex-1 text-sm font-medium text-text-primary">Privacy Policy</span>
+              <ChevronRight size={18} className="text-muted" />
+            </div>
+          </GlassCard>
+          <GlassCard onClick={() => navigate('/settings/terms')}>
+            <div className="flex items-center gap-3">
+              <Scale size={18} className="text-text-secondary" />
+              <span className="flex-1 text-sm font-medium text-text-primary">Terms & Conditions</span>
+              <ChevronRight size={18} className="text-muted" />
+            </div>
+          </GlassCard>
+          <GlassCard onClick={() => navigate('/settings/contact')}>
+            <div className="flex items-center gap-3">
+              <Mail size={18} className="text-text-secondary" />
+              <span className="flex-1 text-sm font-medium text-text-primary">Contact Us</span>
+              <ChevronRight size={18} className="text-muted" />
+            </div>
+          </GlassCard>
+        </div>
       </div>
+
+      {/* About */}
+      <GlassCard>
+        <div className="flex items-center gap-3">
+          <Info size={18} className="text-text-secondary" />
+          <span className="flex-1 text-sm font-medium text-text-primary">About</span>
+          <span className="text-xs text-muted">MOM AI Web v1.0.0</span>
+        </div>
+      </GlassCard>
 
       {/* Logout */}
       <button

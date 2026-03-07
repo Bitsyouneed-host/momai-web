@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { ArrowLeft, Phone, MessageSquare } from 'lucide-react';
 import GlassCard from '../../components/ui/GlassCard';
@@ -9,12 +9,21 @@ import PrimaryButton from '../../components/ui/PrimaryButton';
 import { bookingApi } from '../../api/booking';
 import type { ContactMethod } from '../../types/booking';
 
+interface LocationState {
+  providerName?: string;
+  providerPhone?: string;
+  requestDetails?: string;
+  serviceType?: string;
+}
+
 export default function NewBookingPage() {
   const navigate = useNavigate();
-  const [providerName, setProviderName] = useState('');
-  const [providerPhone, setProviderPhone] = useState('');
-  const [serviceType, setServiceType] = useState('');
-  const [requestDetails, setRequestDetails] = useState('');
+  const location = useLocation();
+  const state = (location.state as LocationState) || {};
+  const [providerName, setProviderName] = useState(state.providerName || '');
+  const [providerPhone, setProviderPhone] = useState(state.providerPhone || '');
+  const [serviceType, setServiceType] = useState(state.serviceType || '');
+  const [requestDetails, setRequestDetails] = useState(state.requestDetails || '');
   const [contactMethod, setContactMethod] = useState<ContactMethod>('call');
   const [preferredDate, setPreferredDate] = useState('');
   const [isLoading, setIsLoading] = useState(false);

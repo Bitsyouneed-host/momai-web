@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Wand2, Shield, Clock, Sparkles, Plus, Search, Calendar, Phone } from 'lucide-react';
+import { Wand2, Shield, Clock, Sparkles, Plus, Calendar, Phone } from 'lucide-react';
 import GlassCard from '../../components/ui/GlassCard';
 import StatusBadge from '../../components/ui/StatusBadge';
 import { useAuthStore } from '../../stores/authStore';
@@ -98,7 +98,7 @@ export default function HomePage() {
 
       {/* MOM ME Hero Button */}
       <button
-        onClick={() => navigate('/booking/new')}
+        onClick={() => navigate('/mom-me')}
         className="w-full p-5 rounded-2xl bg-gradient-to-r from-accent to-pink-500 text-white shadow-lg hover:shadow-xl transition-all active:scale-[0.98]"
       >
         <div className="flex items-center gap-3">
@@ -124,13 +124,13 @@ export default function HomePage() {
             <span className="text-sm font-medium">New Apt</span>
           </div>
         </GlassCard>
-        <GlassCard className="!p-4" onClick={() => navigate('/search')}>
+        <GlassCard className="!p-4" onClick={() => navigate('/calendar')}>
           <div className="flex items-center gap-2">
-            <Search size={18} className="text-primary-deep" />
-            <span className="text-sm font-medium">Search</span>
+            <Calendar size={18} className="text-primary-deep" />
+            <span className="text-sm font-medium">Calendar</span>
           </div>
         </GlassCard>
-        <GlassCard className="!p-4" onClick={() => navigate('/booking')}>
+        <GlassCard className="!p-4" onClick={() => navigate('/booking/pending')}>
           <div className="flex items-center gap-2">
             <Clock size={18} className="text-warning" />
             <span className="text-sm font-medium">Pending</span>
