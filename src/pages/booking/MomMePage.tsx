@@ -8,6 +8,7 @@ import GlassCard from '../../components/ui/GlassCard';
 import PrimaryButton from '../../components/ui/PrimaryButton';
 import { searchApi } from '../../api/search';
 import { bookingApi } from '../../api/booking';
+import { useAuthStore } from '../../stores/authStore';
 import type { SearchResult } from '../../types/search';
 
 type Step = 'input' | 'searching' | 'results' | 'confirm' | 'booking' | 'complete' | 'error';
@@ -25,9 +26,12 @@ const timePreferences = ['Morning', 'Afternoon', 'Anytime'];
 
 export default function MomMePage() {
   const navigate = useNavigate();
+  const user = useAuthStore((s) => s.user);
+  const profileZip = user?.address?.zipCode || '';
+
   const [step, setStep] = useState<Step>('input');
   const [selectedType, setSelectedType] = useState('');
-  const [zipCode, setZipCode] = useState('');
+  const [zipCode, setZipCode] = useState(profileZip);
   const [details, setDetails] = useState('');
   const [timePreference, setTimePreference] = useState('Anytime');
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -45,7 +49,7 @@ export default function MomMePage() {
 
     setStep('searching');
     try {
-      const { data } = await searchApi.providers({ type: selectedType, query: `${selectedType} near ${zipCode}` });
+      const { data } = await searchApi.providers({ type: selectedType, query: selectedType, zipcode: zipCode });
       if (data.success && data.data) {
         const raw = data.data;
         const list = (Array.isArray(raw) ? raw : (raw as unknown as Record<string, unknown>).providers as SearchResult[]) || [];

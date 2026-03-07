@@ -35,6 +35,7 @@ export interface BookingAttempt {
 
 export interface BookingRequest {
   _id: string;
+  id?: string;
   user: string;
   provider?: string;
   providerName: string;
@@ -56,6 +57,10 @@ export interface BookingRequest {
   maxAttempts?: number;
   resultNotes?: string;
   tokenEscrowed?: boolean;
+  tokenRefunded?: boolean;
+  scheduledFor?: string;
+  completedAt?: string;
+  isMomMe?: boolean;
   createdAt: string;
   updatedAt: string;
 }

@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Search, MapPin, Star, Phone, Globe, Plus } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Search, MapPin, Star, Phone, Globe, Plus, Navigation } from 'lucide-react';
 import toast from 'react-hot-toast';
 import GlassCard from '../../components/ui/GlassCard';
 import StyledInput from '../../components/ui/StyledInput';
@@ -8,6 +9,7 @@ import Modal from '../../components/ui/Modal';
 import EmptyState from '../../components/ui/EmptyState';
 import { searchApi } from '../../api/search';
 import { providersApi } from '../../api/providers';
+import { useAuthStore } from '../../stores/authStore';
 import type { SearchResult, PlaceDetails } from '../../types/search';
 
 const providerTypes = [
@@ -21,12 +23,20 @@ const providerTypes = [
 ];
 
 export default function SearchPage() {
+  const navigate = useNavigate();
+  const user = useAuthStore((s) => s.user);
+  const profileZip = user?.address?.zipCode || '';
+
   const [query, setQuery] = useState('');
   const [selectedType, setSelectedType] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedPlace, setSelectedPlace] = useState<PlaceDetails | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+
+  const [zipCode, setZipCode] = useState(profileZip);
+  const [manualZip, setManualZip] = useState('');
+  const [isEditingZip, setIsEditingZip] = useState(false);
 
   const handleSearch = async (overrideQuery?: string, overrideType?: string) => {
     const q = overrideQuery ?? query;
@@ -37,6 +47,7 @@ export default function SearchPage() {
       const { data } = await searchApi.providers({
         query: q.trim() || t,
         type: t || undefined,
+        zipcode: zipCode || undefined,
       });
       if (data.success && data.data) {
         const raw = data.data;
@@ -78,6 +89,18 @@ export default function SearchPage() {
       setIsDetailOpen(false);
     } catch {
       toast.error('Failed to add provider');
+    }
+  };
+
+  const handleApplyManualZip = () => {
+    const cleaned = manualZip.replace(/\D/g, '').slice(0, 5);
+    if (cleaned.length === 5) {
+      setZipCode(cleaned);
+      setManualZip('');
+      setIsEditingZip(false);
+      toast.success(`Searching near ${cleaned}`);
+    } else {
+      toast.error('Please enter a valid 5-digit zip code');
     }
   };
 
@@ -123,6 +146,67 @@ export default function SearchPage() {
             {pt.label}
           </button>
         ))}
+      </div>
+
+      {/* Location banner */}
+      <div className="rounded-xl border border-primary/20 bg-primary/5 px-3 py-2.5">
+        {zipCode && !isEditingZip ? (
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Navigation size={14} className="text-primary-deep" />
+              <span className="text-sm text-text-primary">Searching near <span className="font-semibold">{zipCode}</span></span>
+            </div>
+            <button
+              onClick={() => { setIsEditingZip(true); setManualZip(zipCode); }}
+              className="text-xs text-primary-deep font-medium hover:underline"
+            >
+              Change
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <MapPin size={14} className="text-warning shrink-0" />
+              <p className="text-xs text-text-secondary">
+                {profileZip
+                  ? 'Enter a different zip code to search another area.'
+                  : 'Add your address in your '}
+                {!profileZip && (
+                  <button onClick={() => navigate('/settings/profile')} className="text-primary-deep font-medium hover:underline">
+                    Profile
+                  </button>
+                )}
+                {!profileZip && ' for nearby results, or enter a zip code below.'}
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                inputMode="numeric"
+                maxLength={5}
+                placeholder="Zip code"
+                value={manualZip}
+                onChange={(e) => setManualZip(e.target.value.replace(/\D/g, '').slice(0, 5))}
+                onKeyDown={(e) => e.key === 'Enter' && handleApplyManualZip()}
+                className="w-24 px-3 py-1.5 text-sm rounded-lg border border-primary/30 bg-white focus:outline-none focus:border-primary"
+              />
+              <button
+                onClick={handleApplyManualZip}
+                className="px-3 py-1.5 text-sm font-medium rounded-lg bg-primary text-white hover:bg-primary-dark transition-colors"
+              >
+                Use
+              </button>
+              {isEditingZip && (
+                <button
+                  onClick={() => { setIsEditingZip(false); setManualZip(''); }}
+                  className="px-3 py-1.5 text-sm text-text-secondary hover:text-text-primary"
+                >
+                  Cancel
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Results */}
