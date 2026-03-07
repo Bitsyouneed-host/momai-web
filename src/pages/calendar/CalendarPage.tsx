@@ -21,7 +21,11 @@ export default function CalendarPage() {
       startDate: start.toISOString(),
       endDate: end.toISOString(),
     }).then(({ data }) => {
-      if (data.success && data.data) setAppointments(data.data);
+      if (data.success && data.data) {
+        const raw = data.data;
+        const list = (Array.isArray(raw) ? raw : (raw as unknown as Record<string, unknown>).appointments as Appointment[]) || [];
+        setAppointments(list);
+      }
     }).catch(() => {});
   }, [year, month]);
 

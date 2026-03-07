@@ -22,7 +22,11 @@ export default function ProvidersPage() {
   const fetchProviders = async () => {
     try {
       const { data } = await providersApi.list();
-      if (data.success && data.data) setProviders(data.data);
+      if (data.success && data.data) {
+        const raw = data.data;
+        const list = (Array.isArray(raw) ? raw : (raw as unknown as Record<string, unknown>).providers as Provider[]) || [];
+        setProviders(list);
+      }
     } catch { /* ignore */ } finally { setIsLoading(false); }
   };
 

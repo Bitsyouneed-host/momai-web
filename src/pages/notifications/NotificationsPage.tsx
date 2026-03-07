@@ -24,7 +24,9 @@ export default function NotificationsPage() {
     try {
       const { data } = await client.get('/users/me/notifications');
       if (data.success && data.data) {
-        setNotifications(data.data);
+        const raw = data.data;
+        const list = Array.isArray(raw) ? raw : (raw as Record<string, unknown>).notifications as Notification[] || [];
+        setNotifications(list);
       }
     } catch {
       setNotifications([]);

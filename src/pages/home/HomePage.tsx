@@ -17,7 +17,9 @@ export default function HomePage() {
   useEffect(() => {
     appointmentsApi.list({ status: 'scheduled' }).then(({ data }) => {
       if (data.success && data.data) {
-        const sorted = data.data
+        const raw = data.data;
+        const list = (Array.isArray(raw) ? raw : (raw as unknown as Record<string, unknown>).appointments as Appointment[]) || [];
+        const sorted = list
           .filter((a) => new Date(a.startTime) > new Date())
           .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
           .slice(0, 3);

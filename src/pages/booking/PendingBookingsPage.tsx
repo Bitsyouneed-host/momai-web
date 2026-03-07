@@ -27,8 +27,10 @@ export default function PendingBookingsPage() {
     try {
       const { data } = await bookingApi.list();
       if (data.success && data.data) {
-        const active = data.data.filter((b) => activeStatuses.includes(b.status));
-        const recent = data.data
+        const raw = data.data;
+        const all = (Array.isArray(raw) ? raw : (raw as unknown as Record<string, unknown>).bookingRequests as BookingRequest[]) || [];
+        const active = all.filter((b) => activeStatuses.includes(b.status));
+        const recent = all
           .filter((b) => !activeStatuses.includes(b.status))
           .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
           .slice(0, 5);

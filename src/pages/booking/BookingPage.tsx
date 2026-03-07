@@ -15,7 +15,9 @@ export default function BookingPage() {
   useEffect(() => {
     bookingApi.list().then(({ data }) => {
       if (data.success && data.data) {
-        setRequests(data.data);
+        const raw = data.data;
+        const list = (Array.isArray(raw) ? raw : (raw as unknown as Record<string, unknown>).bookingRequests as BookingRequest[]) || [];
+        setRequests(list);
       }
     }).catch(() => {}).finally(() => setIsLoading(false));
   }, []);
