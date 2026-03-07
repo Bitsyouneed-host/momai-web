@@ -20,7 +20,6 @@ import ProfilePage from './pages/settings/ProfilePage';
 import PaywallPage from './pages/settings/PaywallPage';
 import WalletPage from './pages/settings/WalletPage';
 import InsurancePage from './pages/settings/InsurancePage';
-import ChangePasswordPage from './pages/settings/ChangePasswordPage';
 import PrivacyPolicyPage from './pages/settings/PrivacyPolicyPage';
 import TermsPage from './pages/settings/TermsPage';
 import ContactPage from './pages/settings/ContactPage';
@@ -67,7 +66,6 @@ export default function App() {
           <Route path="settings/paywall" element={<PaywallPage />} />
           <Route path="settings/wallet" element={<WalletPage />} />
           <Route path="settings/insurance" element={<InsurancePage />} />
-          <Route path="settings/password" element={<ChangePasswordPage />} />
           <Route path="settings/privacy" element={<PrivacyPolicyPage />} />
           <Route path="settings/terms" element={<TermsPage />} />
           <Route path="settings/contact" element={<ContactPage />} />

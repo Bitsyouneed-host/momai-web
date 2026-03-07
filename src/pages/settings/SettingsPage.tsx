@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import {
   User, Shield, Bell, CreditCard, Wallet, LogOut, ChevronRight, Lock,
-  Key, FileText, Scale, Mail, Calendar, Info,
+  FileText, Scale, Mail, Calendar, Info,
 } from 'lucide-react';
 import GlassCard from '../../components/ui/GlassCard';
 import { useAuthStore } from '../../stores/authStore';
@@ -96,15 +96,6 @@ export default function SettingsPage() {
           <Calendar size={18} className="text-primary-deep" />
           <span className="flex-1 text-sm font-medium text-text-primary">Calendar Integration</span>
           <span className="text-xs text-muted">Coming Soon</span>
-        </div>
-      </GlassCard>
-
-      {/* Change Password */}
-      <GlassCard onClick={() => navigate('/settings/password')}>
-        <div className="flex items-center gap-3">
-          <Key size={18} className="text-text-secondary" />
-          <span className="flex-1 text-sm font-medium text-text-primary">Change Password</span>
-          <ChevronRight size={18} className="text-muted" />
         </div>
       </GlassCard>
 
