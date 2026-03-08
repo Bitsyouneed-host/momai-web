@@ -24,12 +24,12 @@ export const ACTIVE_CHAIN = CHAINS.avalancheFuji;
 
 // Contract addresses
 export const NFT_CONTRACT_ADDRESS: Record<number, string> = {
-  43113: '0xC8c03CC98c748C088647065C4ecf86655E2Ad5c7', // Fuji
+  43113: '0x88a5036f9DCd85bcAC8564CB2Ef4781F8Bb14595', // Fuji
   43114: '', // Mainnet (not deployed yet)
 };
 
 export const USDT_CONTRACT_ADDRESS: Record<number, string> = {
-  43113: '0x9702230A8Ea53601f5cD2dc00fDBc13d4dF4A8c7',
+  43113: '0xb64808c1Aaf5374794aE91C7C6331f48367fec32', // MockUSDT (USDT.BMW) for testing
   43114: '0x9702230A8Ea53601f5cD2dc00fDBc13d4dF4A8c7',
 };
 
