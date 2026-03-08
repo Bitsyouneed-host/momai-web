@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { ethers } from 'ethers';
 import { ArrowLeft, Star, Check, Phone, Calendar, Search, Users, Sparkles, Loader2, Wallet, Shield } from 'lucide-react';
 import GlassCard from '../../components/ui/GlassCard';
 import PrimaryButton from '../../components/ui/PrimaryButton';
@@ -9,7 +10,7 @@ import { useSubscriptionStore } from '../../stores/subscriptionStore';
 import { useAuthStore } from '../../stores/authStore';
 import { subscriptionApi } from '../../api/subscription';
 import { useContractMint, type MintTxState } from '../../hooks/useContractMint';
-import { TIER_PRO, TIER_PRO_PLUS } from '../../lib/contracts';
+import { TIER_PRO, TIER_PRO_PLUS, ACTIVE_CHAIN, NFT_CONTRACT_ADDRESS, NFT_ABI } from '../../lib/contracts';
 import client from '../../api/client';
 
 const features = [
@@ -62,10 +63,46 @@ export default function PaywallPage() {
 
   const planPrices = { pro: 29, pro_plus: 72 };
 
+  // Contract prices keyed by "tier-duration-method"
+  const [contractPrices, setContractPrices] = useState<Record<string, string>>({});
+
+  // Fetch prices directly from the smart contract so display matches actual charge
   useEffect(() => {
     subscriptionApi.getCryptoPrice().then(({ data }) => {
       if (data.success && data.data) setAvaxPrice(data.data.avaxPrice);
     }).catch(() => {});
+
+    // Fetch contract prices for all plan/duration combinations
+    const fetchContractPrices = async () => {
+      const nftAddress = NFT_CONTRACT_ADDRESS[ACTIVE_CHAIN.chainId];
+      if (!nftAddress) return;
+      try {
+        const provider = new ethers.JsonRpcProvider(ACTIVE_CHAIN.rpcUrl);
+        const contract = new ethers.Contract(nftAddress, NFT_ABI, provider);
+        const prices: Record<string, string> = {};
+
+        for (const tier of [TIER_PRO, TIER_PRO_PLUS]) {
+          for (const dur of [1, 3, 12]) {
+            try {
+              const avaxWei: bigint = await contract.getPrice(tier, dur);
+              prices[`${tier}-${dur}-avax`] = ethers.formatEther(avaxWei);
+            } catch {
+              // Contract call failed, leave empty
+            }
+            try {
+              const usdtRaw: bigint = await contract.getUSDPrice(tier, dur);
+              prices[`${tier}-${dur}-usdt`] = ethers.formatUnits(usdtRaw, 6);
+            } catch {
+              // Contract call failed, leave empty
+            }
+          }
+        }
+        setContractPrices(prices);
+      } catch {
+        // Fallback: contract not reachable
+      }
+    };
+    fetchContractPrices();
   }, []);
 
   const getDiscountedPrice = (usdPrice: number) => {
@@ -74,18 +111,25 @@ export default function PaywallPage() {
     return opt && opt.discount > 0 ? total * (1 - opt.discount / 100) : total;
   };
 
-  const getAvaxAmount = (usdPrice: number) => {
-    if (!avaxPrice || avaxPrice === 0) return '...';
-    const discounted = getDiscountedPrice(usdPrice);
-    return (discounted / avaxPrice).toFixed(4);
-  };
-
   const getFormattedPrice = (plan: 'pro' | 'pro_plus') => {
+    const tier = plan === 'pro' ? TIER_PRO : TIER_PRO_PLUS;
+    const key = `${tier}-${durationMonths}-${paymentMethod}`;
+    const contractPrice = contractPrices[key];
+
+    if (contractPrice) {
+      if (paymentMethod === 'usdt') {
+        return `$${parseFloat(contractPrice).toFixed(2)} USDT`;
+      }
+      return `${parseFloat(contractPrice).toFixed(4)} AVAX`;
+    }
+
+    // Fallback to USD calculation if contract prices not loaded yet
     const usdPrice = planPrices[plan];
     if (paymentMethod === 'usdt') {
       return `$${getDiscountedPrice(usdPrice).toFixed(2)} USDT`;
     }
-    return `${getAvaxAmount(usdPrice)} AVAX`;
+    if (!avaxPrice || avaxPrice === 0) return '... AVAX';
+    return `${(getDiscountedPrice(usdPrice) / avaxPrice).toFixed(4)} AVAX`;
   };
 
   // External wallet: sign directly via MetaMask
