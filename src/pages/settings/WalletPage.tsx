@@ -19,6 +19,7 @@ export default function WalletPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isConnecting, setIsConnecting] = useState(false);
   const [avaxBalance, setAvaxBalance] = useState<string | null>(null);
+  const [usdtBalance, setUsdtBalance] = useState<string | null>(null);
   const [showExportWarning, setShowExportWarning] = useState(false);
 
   const walletAddress = user?.walletAddress || user?.generatedWallet?.address;
@@ -40,6 +41,10 @@ export default function WalletPage() {
           if (walletData.nativeBalance) {
             const nb = walletData.nativeBalance as { balance: string };
             setAvaxBalance(nb.balance);
+          }
+          if (walletData.usdtBalance) {
+            const ub = walletData.usdtBalance as { balance: string };
+            setUsdtBalance(ub.balance);
           }
         }
       }).catch(() => {});
@@ -109,13 +114,20 @@ export default function WalletPage() {
           </GlassCard>
 
           {/* Balances */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <GlassCard className="!p-4">
               <div className="text-xs text-text-secondary mb-1">AVAX Balance</div>
               <div className="text-lg font-bold text-text-primary">
                 {avaxBalance !== null ? `${parseFloat(avaxBalance).toFixed(4)}` : '...'}
               </div>
               <div className="text-[10px] text-muted">Avalanche</div>
+            </GlassCard>
+            <GlassCard className="!p-4">
+              <div className="text-xs text-text-secondary mb-1">USDT Balance</div>
+              <div className="text-lg font-bold text-text-primary">
+                {usdtBalance !== null ? `${parseFloat(usdtBalance).toFixed(2)}` : '...'}
+              </div>
+              <div className="text-[10px] text-muted">USDT</div>
             </GlassCard>
             <GlassCard className="!p-4">
               <div className="text-xs text-text-secondary mb-1">MOMAI Tokens</div>
