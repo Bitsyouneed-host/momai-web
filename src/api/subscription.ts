@@ -11,4 +11,7 @@ export const subscriptionApi = {
 
   getCryptoPrice: () =>
     client.get<APIResponse<{ avaxPrice: number; updatedAt: string }>>('/subscription/crypto/price'),
+
+  verifyNFTPurchase: (txHash: string, chain: string) =>
+    client.post<APIResponse<unknown>>('/subscription/nft/verify-purchase', { txHash, chain }),
 };

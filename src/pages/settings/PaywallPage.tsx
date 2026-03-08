@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { ArrowLeft, Star, Check, Phone, Calendar, Search, Users, Sparkles, Loader2, Wallet } from 'lucide-react';
+import { ArrowLeft, Star, Check, Phone, Calendar, Search, Users, Sparkles, Loader2, Wallet, Shield } from 'lucide-react';
 import GlassCard from '../../components/ui/GlassCard';
 import PrimaryButton from '../../components/ui/PrimaryButton';
 import StatusBadge from '../../components/ui/StatusBadge';
 import { useSubscriptionStore } from '../../stores/subscriptionStore';
 import { useAuthStore } from '../../stores/authStore';
 import { subscriptionApi } from '../../api/subscription';
+import { useContractMint, type MintTxState } from '../../hooks/useContractMint';
+import { TIER_PRO, TIER_PRO_PLUS } from '../../lib/contracts';
 import client from '../../api/client';
 
 const features = [
@@ -20,6 +22,24 @@ const features = [
 
 type PaymentMethod = 'avax' | 'usdt';
 
+const durationOptions = [
+  { months: 1, label: '1 Month', discount: 0 },
+  { months: 3, label: '3 Months', discount: 10 },
+  { months: 12, label: '12 Months', discount: 25 },
+];
+
+const txStateLabels: Record<MintTxState, string> = {
+  idle: '',
+  'switching-chain': 'Switching to Avalanche...',
+  approving: 'Approving USDT... (sign in wallet)',
+  signing: 'Sign transaction in wallet...',
+  pending: 'Transaction sent...',
+  confirming: 'Confirming on-chain...',
+  verifying: 'Verifying subscription...',
+  success: 'Success!',
+  error: 'Transaction failed',
+};
+
 export default function PaywallPage() {
   const navigate = useNavigate();
   const { subscription, tokenBalance, useTokenSystem, fetchStatus } = useSubscriptionStore();
@@ -27,12 +47,18 @@ export default function PaywallPage() {
 
   const [selectedPlan, setSelectedPlan] = useState<'pro' | 'pro_plus' | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('avax');
+  const [durationMonths, setDurationMonths] = useState(1);
   const [avaxPrice, setAvaxPrice] = useState<number | null>(null);
   const [isPaying, setIsPaying] = useState(false);
+
+  const { txState, error: mintError, txHash, mintWithAVAX, mintWithUSDT, reset: resetMint } = useContractMint();
 
   const currentTier = subscription?.tier || 'free';
   const tierName = currentTier === 'pro_plus' ? 'Pro+' : currentTier === 'pro' ? 'Pro' : 'Free';
   const walletAddress = user?.walletAddress || user?.generatedWallet?.address;
+
+  // External wallet = MetaMask/injected provider available AND user is wallet-auth or has external wallet
+  const isExternalWallet = !!window.ethereum && (!user?.generatedWallet || user?.generatedWallet?.provider === 'external');
 
   const planPrices = { pro: 29, pro_plus: 72 };
 
@@ -42,12 +68,39 @@ export default function PaywallPage() {
     }).catch(() => {});
   }, []);
 
-  const getAvaxAmount = (usdPrice: number) => {
-    if (!avaxPrice || avaxPrice === 0) return '...';
-    return (usdPrice / avaxPrice).toFixed(4);
+  const getDiscountedPrice = (usdPrice: number) => {
+    const opt = durationOptions.find((d) => d.months === durationMonths);
+    const total = usdPrice * durationMonths;
+    return opt && opt.discount > 0 ? total * (1 - opt.discount / 100) : total;
   };
 
-  const handlePay = async () => {
+  const getAvaxAmount = (usdPrice: number) => {
+    if (!avaxPrice || avaxPrice === 0) return '...';
+    const discounted = getDiscountedPrice(usdPrice);
+    return (discounted / avaxPrice).toFixed(4);
+  };
+
+  const getFormattedPrice = (plan: 'pro' | 'pro_plus') => {
+    const usdPrice = planPrices[plan];
+    if (paymentMethod === 'usdt') {
+      return `$${getDiscountedPrice(usdPrice).toFixed(2)} USDT`;
+    }
+    return `${getAvaxAmount(usdPrice)} AVAX`;
+  };
+
+  // External wallet: sign directly via MetaMask
+  const handleExternalPay = async () => {
+    if (!selectedPlan) return;
+    const tier = selectedPlan === 'pro' ? TIER_PRO : TIER_PRO_PLUS;
+    if (paymentMethod === 'avax') {
+      await mintWithAVAX(tier, durationMonths);
+    } else {
+      await mintWithUSDT(tier, durationMonths);
+    }
+  };
+
+  // Backend-managed wallet: backend signs on behalf
+  const handleBackendPay = async () => {
     if (!selectedPlan) return;
     if (!walletAddress) {
       toast.error('Please connect a wallet first');
@@ -57,9 +110,11 @@ export default function PaywallPage() {
 
     setIsPaying(true);
     try {
-      const { data } = await client.post('/subscription/crypto/pay', {
-        planId: selectedPlan,
+      const { data } = await client.post('/subscription/nft/mint', {
+        tier: selectedPlan === 'pro' ? TIER_PRO : TIER_PRO_PLUS,
+        durationMonths,
         tokenType: paymentMethod === 'avax' ? 'native' : 'usdt',
+        chain: 'avalancheFuji',
       });
 
       if (data.success) {
@@ -76,6 +131,16 @@ export default function PaywallPage() {
       setIsPaying(false);
     }
   };
+
+  const handlePay = () => {
+    if (isExternalWallet) {
+      handleExternalPay();
+    } else {
+      handleBackendPay();
+    }
+  };
+
+  const isMinting = txState !== 'idle' && txState !== 'success' && txState !== 'error';
 
   return (
     <div className="space-y-4">
@@ -127,7 +192,7 @@ export default function PaywallPage() {
           </div>
           <div className="text-right">
             <div className="text-xl font-bold text-text-primary">$29</div>
-            <div className="text-xs text-text-secondary">USDT/month</div>
+            <div className="text-xs text-text-secondary">/month</div>
           </div>
         </div>
         {currentTier === 'pro' && (
@@ -158,7 +223,7 @@ export default function PaywallPage() {
           </div>
           <div className="text-right">
             <div className="text-xl font-bold text-text-primary">$72</div>
-            <div className="text-xs text-text-secondary">USDT/month</div>
+            <div className="text-xs text-text-secondary">/month</div>
           </div>
         </div>
         {currentTier === 'pro_plus' && (
@@ -181,6 +246,31 @@ export default function PaywallPage() {
       {selectedPlan && (
         <GlassCard className="!border-accent/30">
           <h3 className="font-semibold text-text-primary mb-3">Payment</h3>
+
+          {/* Duration Selector */}
+          <div className="mb-4">
+            <p className="text-xs text-text-secondary mb-2">Duration</p>
+            <div className="flex gap-2">
+              {durationOptions.map((opt) => (
+                <button
+                  key={opt.months}
+                  onClick={() => setDurationMonths(opt.months)}
+                  className={`flex-1 py-2 rounded-xl text-xs font-medium border transition-colors relative ${
+                    durationMonths === opt.months
+                      ? 'border-accent bg-accent/10 text-accent'
+                      : 'border-primary/15 text-text-secondary'
+                  }`}
+                >
+                  {opt.label}
+                  {opt.discount > 0 && (
+                    <span className="absolute -top-2 -right-1 text-[9px] bg-success text-white px-1.5 py-0.5 rounded-full font-bold">
+                      -{opt.discount}%
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
 
           {/* Payment Method Toggle */}
           <div className="flex gap-2 mb-4">
@@ -210,13 +300,10 @@ export default function PaywallPage() {
           <div className="bg-gray-50 rounded-xl p-3 mb-4">
             <div className="flex justify-between text-sm">
               <span className="text-text-secondary">
-                {selectedPlan === 'pro' ? 'Pro' : 'Pro+'} Plan
+                {selectedPlan === 'pro' ? 'Pro' : 'Pro+'} Plan ({durationMonths}mo)
               </span>
               <span className="font-bold text-text-primary">
-                {paymentMethod === 'usdt'
-                  ? `$${planPrices[selectedPlan]} USDT`
-                  : `${getAvaxAmount(planPrices[selectedPlan])} AVAX`
-                }
+                {getFormattedPrice(selectedPlan)}
               </span>
             </div>
             {paymentMethod === 'avax' && avaxPrice && (
@@ -227,7 +314,7 @@ export default function PaywallPage() {
           </div>
 
           {/* Wallet Status */}
-          {!walletAddress && (
+          {!walletAddress && !window.ethereum && (
             <div className="bg-warning/10 rounded-xl p-3 mb-4 flex items-center gap-2">
               <Wallet size={16} className="text-warning" />
               <span className="text-xs text-warning font-medium">
@@ -236,37 +323,88 @@ export default function PaywallPage() {
             </div>
           )}
 
+          {/* External wallet indicator */}
+          {isExternalWallet && (
+            <div className="bg-primary/5 rounded-xl p-3 mb-4 flex items-center gap-2">
+              <Shield size={16} className="text-primary-deep" />
+              <span className="text-xs text-text-secondary">
+                You&apos;ll sign this transaction in your wallet (MetaMask)
+              </span>
+            </div>
+          )}
+
+          {/* Transaction Progress (external wallet) */}
+          {isMinting && (
+            <div className="bg-accent/5 border border-accent/20 rounded-xl p-4 mb-4">
+              <div className="flex items-center gap-3">
+                <Loader2 size={20} className="animate-spin text-accent" />
+                <div>
+                  <p className="text-sm font-medium text-text-primary">{txStateLabels[txState]}</p>
+                  {txHash && (
+                    <a
+                      href={`https://testnet.snowtrace.io/tx/${txHash}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-primary-deep hover:underline"
+                    >
+                      View transaction
+                    </a>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Mint Success */}
+          {txState === 'success' && (
+            <div className="bg-success/10 border border-success/20 rounded-xl p-4 mb-4">
+              <div className="flex items-center gap-3">
+                <Check size={20} className="text-success" />
+                <div>
+                  <p className="text-sm font-medium text-success">Subscription activated!</p>
+                  {txHash && (
+                    <a
+                      href={`https://testnet.snowtrace.io/tx/${txHash}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-primary-deep hover:underline"
+                    >
+                      View transaction
+                    </a>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Mint Error */}
+          {txState === 'error' && mintError && (
+            <div className="bg-error/10 border border-error/20 rounded-xl p-3 mb-4">
+              <p className="text-xs text-error">{mintError}</p>
+              <button onClick={resetMint} className="text-xs text-primary-deep font-medium mt-1 hover:underline">
+                Try again
+              </button>
+            </div>
+          )}
+
           <PrimaryButton
             onClick={handlePay}
-            isLoading={isPaying}
-            disabled={!walletAddress}
+            isLoading={isPaying || isMinting}
+            disabled={(!walletAddress && !window.ethereum) || isMinting}
             className="!from-accent !to-pink-500"
           >
-            {isPaying ? (
+            {isPaying || isMinting ? (
               <span className="flex items-center gap-2"><Loader2 size={16} className="animate-spin" /> Processing...</span>
             ) : (
-              `Pay ${paymentMethod === 'usdt' ? `$${planPrices[selectedPlan]} USDT` : `${getAvaxAmount(planPrices[selectedPlan])} AVAX`}`
+              `Pay ${getFormattedPrice(selectedPlan)}`
             )}
           </PrimaryButton>
 
-          <button onClick={() => setSelectedPlan(null)} className="w-full text-center text-sm text-muted py-2 mt-1">
+          <button onClick={() => { setSelectedPlan(null); resetMint(); }} className="w-full text-center text-sm text-muted py-2 mt-1">
             Cancel
           </button>
         </GlassCard>
       )}
-
-      {/* BYOK */}
-      <GlassCard className="opacity-60">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="font-bold text-text-primary">BYOK</h3>
-            <p className="text-xs text-text-secondary">Bring Your Own Keys</p>
-          </div>
-          <span className="text-xs bg-gray-100 text-gray-500 px-3 py-1 rounded-full font-medium">
-            Coming Soon
-          </span>
-        </div>
-      </GlassCard>
 
       {/* Features */}
       <GlassCard>
