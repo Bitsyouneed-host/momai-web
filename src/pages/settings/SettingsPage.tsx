@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import {
   User, Shield, Bell, CreditCard, Wallet, LogOut, ChevronRight, Lock,
-  FileText, Scale, Mail, Calendar, Info,
+  FileText, Scale, Mail, Calendar, Info, Smartphone, Download,
 } from 'lucide-react';
 import GlassCard from '../../components/ui/GlassCard';
 import { useAuthStore } from '../../stores/authStore';
@@ -144,6 +144,25 @@ export default function SettingsPage() {
           <span className="text-xs text-muted">MOM AI Web v1.0.0</span>
         </div>
       </GlassCard>
+
+      {/* Get Mobile App */}
+      <div className="pt-2">
+        <h3 className="text-xs font-semibold text-muted uppercase tracking-wider mb-2 px-1">Get the App</h3>
+        <GlassCard
+          onClick={() => window.open('https://github.com/Bitsyouneed-host/momai-android-releases/releases/latest', '_blank')}
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
+              <Smartphone size={20} className="text-green-600" />
+            </div>
+            <div className="flex-1">
+              <div className="text-sm font-medium text-text-primary">Download for Android</div>
+              <div className="text-xs text-text-secondary">Get the MOM AI mobile app</div>
+            </div>
+            <Download size={18} className="text-primary-deep" />
+          </div>
+        </GlassCard>
+      </div>
 
       {/* Logout */}
       <button
