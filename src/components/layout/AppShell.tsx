@@ -4,6 +4,7 @@ import TabBar from './TabBar';
 import FloatingSubscriptionBadge from './FloatingSubscriptionBadge';
 import WalletDropdown from './WalletDropdown';
 import NotificationButton from './NotificationButton';
+import MobileAppBanner from '../ui/MobileAppBanner';
 import { useAuthStore } from '../../stores/authStore';
 import { useSubscriptionStore } from '../../stores/subscriptionStore';
 
@@ -19,6 +20,7 @@ export default function AppShell() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gradient-top to-gradient-bottom">
+      <MobileAppBanner />
       <TabBar />
 
       {/* Floating elements */}
