@@ -107,7 +107,7 @@ export default function WalletPage() {
     try {
       const { data } = await usersApi.exportWalletSendCode();
       if (data.success && data.data) {
-        setExportMaskedEmail((data.data as Record<string, string>).email || '');
+        setExportMaskedEmail((data.data as unknown as Record<string, string>).email || '');
         setExportStep('code');
       } else {
         setExportError((data as unknown as Record<string, string>).message || 'Failed to send code');
@@ -184,7 +184,7 @@ export default function WalletPage() {
       const amt = sendToken === 'nft' ? (seasonPassTokenId || '0') : sendAmount;
       const { data } = await usersApi.sendFundsSendCode({ tokenType: sendToken, amount: amt, to: sendTo });
       if (data.success && data.data) {
-        setSendMaskedEmail((data.data as Record<string, string>).email || '');
+        setSendMaskedEmail((data.data as unknown as Record<string, string>).email || '');
         setSendStep('code');
       } else {
         setSendError((data as unknown as Record<string, string>).message || 'Failed to send code');
@@ -557,7 +557,7 @@ export default function WalletPage() {
                           Cancel
                         </button>
                       </>
-                    ) : (
+                    ) : exportSecrets ? (
                       <>
                         {/* Address */}
                         {exportSecrets.address && (
@@ -642,7 +642,7 @@ export default function WalletPage() {
                           Done
                         </button>
                       </>
-                    )}
+                    ) : null}
                   </div>
                 </div>
               )}
