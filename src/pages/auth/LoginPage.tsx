@@ -9,7 +9,7 @@ import SecondaryButton from '../../components/ui/SecondaryButton';
 import { authApi } from '../../api/auth';
 import { useAuthStore } from '../../stores/authStore';
 
-type Step = 'email' | 'code' | 'profile' | 'wallet-email' | 'wallet-code';
+type Step = 'email' | 'code' | 'profile' | 'wallet-email' | 'wallet-code' | 'wallet-welcome';
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -24,9 +24,10 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [needsProfile, setNeedsProfile] = useState(false);
   const [walletEmail, setWalletEmail] = useState('');
+  const [welcomeTokens, setWelcomeTokens] = useState(0);
 
   // Redirect if already authenticated (unless in wallet email verification flow)
-  if (isAuthenticated && step !== 'wallet-email' && step !== 'wallet-code') {
+  if (isAuthenticated && step !== 'wallet-email' && step !== 'wallet-code' && step !== 'wallet-welcome') {
     navigate('/', { replace: true });
     return null;
   }
@@ -168,12 +169,8 @@ export default function LoginPage() {
       const { data } = await authApi.walletTrialVerifyCode(trimmedCode);
       if (data.success) {
         const tokensGranted = data.data?.tokensGranted || 0;
-        if (tokensGranted > 0) {
-          toast.success(`Email verified! ${tokensGranted} MOMAI tokens + gas sent to your wallet`);
-        } else {
-          toast.success('Email verified!');
-        }
-        navigate('/', { replace: true });
+        setWelcomeTokens(tokensGranted);
+        setStep('wallet-welcome');
       } else {
         toast.error(data.message || 'Verification failed');
       }
@@ -338,7 +335,7 @@ export default function LoginPage() {
                 <Mail size={32} className="mx-auto text-primary mb-2" />
                 <h2 className="text-lg font-semibold text-text-primary">Verify Your Email</h2>
                 <p className="text-sm text-text-secondary">
-                  Confirm your email to receive <strong>10 free MOMAI tokens</strong> and gas for your wallet!
+                  Confirm your email to receive <strong>29 USDT + 10 MOMAI tokens</strong> and gas fees covered!
                 </p>
               </div>
 
@@ -421,6 +418,35 @@ export default function LoginPage() {
                   Resend Code
                 </button>
               </div>
+            </div>
+          )}
+
+          {step === 'wallet-welcome' && (
+            <div className="space-y-5">
+              <div className="text-center">
+                <div className="text-4xl mb-3">🎉</div>
+                <h2 className="text-xl font-bold text-text-primary">Welcome to the MVP/Beta!</h2>
+              </div>
+
+              <div className="bg-orange-50 rounded-xl p-4 text-center space-y-2">
+                <p className="text-sm text-text-secondary">The creator has given you:</p>
+                <p className="text-2xl font-bold text-success">29 USDT</p>
+                {welcomeTokens > 0 && (
+                  <p className="text-base font-bold text-warning">+ {welcomeTokens} MOMAI Tokens + Gas</p>
+                )}
+              </div>
+
+              <p className="text-sm text-text-secondary text-center">
+                We also covered your gas fees so you can start transacting right away! This USDT is for testing while we are on testnet. When we move to mainnet, the app will accept real USDT.
+              </p>
+
+              <p className="text-center font-semibold text-primary-deep">
+                Have fun and thank you for playing!
+              </p>
+
+              <PrimaryButton onClick={() => navigate('/', { replace: true })}>
+                Let&apos;s Go!
+              </PrimaryButton>
             </div>
           )}
         </GlassCard>

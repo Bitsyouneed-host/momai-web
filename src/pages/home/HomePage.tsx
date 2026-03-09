@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Wand2, Shield, Clock, Sparkles, Plus, Calendar, Phone } from 'lucide-react';
+import { Wand2, Shield, Clock, Sparkles, Plus, Calendar, Phone, Mail, ChevronRight } from 'lucide-react';
 import { ethers } from 'ethers';
 import GlassCard from '../../components/ui/GlassCard';
 import StatusBadge from '../../components/ui/StatusBadge';
@@ -91,6 +91,23 @@ export default function HomePage() {
         </h1>
         <p className="text-text-secondary">What would you like to do today?</p>
       </div>
+
+      {/* Connect Email Banner (for wallet-only users who skipped email) */}
+      {!user?.email && (
+        <button
+          onClick={() => navigate('/connect-email')}
+          className="w-full p-4 rounded-2xl bg-gradient-to-r from-primary to-primary-dark text-white shadow-md hover:shadow-lg transition-all"
+        >
+          <div className="flex items-center gap-3">
+            <Mail size={24} />
+            <div className="text-left flex-1">
+              <div className="font-bold text-sm">Connect Your Email</div>
+              <div className="text-xs opacity-90">Get 29 USDT + 10 MOMAI tokens + gas fees covered</div>
+            </div>
+            <ChevronRight size={20} />
+          </div>
+        </button>
+      )}
 
       {/* Subscription Status */}
       <GlassCard>

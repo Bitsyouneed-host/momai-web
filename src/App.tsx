@@ -24,6 +24,7 @@ import PrivacyPolicyPage from './pages/settings/PrivacyPolicyPage';
 import TermsPage from './pages/settings/TermsPage';
 import ContactPage from './pages/settings/ContactPage';
 import NotificationsPage from './pages/notifications/NotificationsPage';
+import ConnectEmailPage from './pages/settings/ConnectEmailPage';
 
 export default function App() {
   return (
@@ -70,6 +71,7 @@ export default function App() {
           <Route path="settings/terms" element={<TermsPage />} />
           <Route path="settings/contact" element={<ContactPage />} />
           <Route path="notifications" element={<NotificationsPage />} />
+          <Route path="connect-email" element={<ConnectEmailPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
