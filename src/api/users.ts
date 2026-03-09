@@ -17,4 +17,7 @@ export const usersApi = {
 
   getWalletInfo: () =>
     client.get<APIResponse<{ address: string; chain: string; provider: string }>>('/users/me/wallet'),
+
+  exportWallet: (password: string) =>
+    client.post<APIResponse<{ address?: string; privateKey?: string; mnemonic?: string; chain?: string; warning?: string }>>('/users/me/wallet/export', { password }),
 };

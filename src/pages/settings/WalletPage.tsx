@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { ArrowLeft, Wallet, Copy, Check, ExternalLink, Loader2, History, Coins, AlertTriangle, Info } from 'lucide-react';
+import { ArrowLeft, Wallet, Copy, Check, ExternalLink, Loader2, History, Coins, AlertTriangle, Info, Key, Eye, EyeOff, Lock } from 'lucide-react';
 import GlassCard from '../../components/ui/GlassCard';
 import PrimaryButton from '../../components/ui/PrimaryButton';
 import EmptyState from '../../components/ui/EmptyState';
@@ -20,7 +20,13 @@ export default function WalletPage() {
   const [isConnecting, setIsConnecting] = useState(false);
   const [avaxBalance, setAvaxBalance] = useState<string | null>(null);
   const [usdtBalance, setUsdtBalance] = useState<string | null>(null);
-  const [showExportWarning, setShowExportWarning] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportPassword, setExportPassword] = useState('');
+  const [exportLoading, setExportLoading] = useState(false);
+  const [exportError, setExportError] = useState('');
+  const [exportSecrets, setExportSecrets] = useState<{ address?: string; privateKey?: string; mnemonic?: string; chain?: string; warning?: string } | null>(null);
+  const [showPrivateKey, setShowPrivateKey] = useState(false);
+  const [showMnemonic, setShowMnemonic] = useState(false);
 
   const walletAddress = user?.walletAddress || user?.generatedWallet?.address;
   const isGeneratedWallet = user?.authMethod === 'email' && user?.generatedWallet?.address;
@@ -73,6 +79,39 @@ export default function WalletPage() {
     } finally {
       setIsConnecting(false);
     }
+  };
+
+  const handleExportWallet = async () => {
+    if (!exportPassword.trim()) return;
+    setExportLoading(true);
+    setExportError('');
+    try {
+      const { data } = await usersApi.exportWallet(exportPassword);
+      if (data.success && data.data) {
+        setExportSecrets(data.data);
+      } else {
+        setExportError((data as unknown as Record<string, string>).error || 'Failed to export wallet');
+      }
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { status: number } };
+      setExportError(axiosErr.response?.status === 401 ? 'Incorrect password' : 'Export failed');
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
+  const copySecret = async (text: string, label: string) => {
+    await navigator.clipboard.writeText(text);
+    toast.success(`${label} copied`);
+  };
+
+  const closeExportModal = () => {
+    setShowExportModal(false);
+    setExportPassword('');
+    setExportError('');
+    setExportSecrets(null);
+    setShowPrivateKey(false);
+    setShowMnemonic(false);
   };
 
   const reasonLabels: Record<string, string> = {
@@ -154,32 +193,140 @@ export default function WalletPage() {
           {isGeneratedWallet && (
             <>
               <button
-                onClick={() => setShowExportWarning(true)}
+                onClick={() => setShowExportModal(true)}
                 className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-warning/30 text-warning text-sm font-medium hover:bg-warning/5"
               >
-                <AlertTriangle size={16} /> Export Private Key
+                <Key size={16} /> Export Private Key
               </button>
 
-              {showExportWarning && (
-                <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setShowExportWarning(false)}>
-                  <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-4" onClick={(e) => e.stopPropagation()}>
+              {showExportModal && (
+                <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={closeExportModal}>
+                  <div className="bg-white rounded-2xl max-w-md w-full p-5 space-y-4 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center gap-2 text-warning">
                       <AlertTriangle size={24} />
-                      <h3 className="font-bold text-lg">Warning</h3>
+                      <h3 className="font-bold text-lg">Export Private Key</h3>
                     </div>
-                    <p className="text-sm text-text-secondary">
-                      Exporting your private key is a security risk. Anyone with your private key has full control of your wallet and funds.
-                      Only export if you are moving to a self-custodial wallet.
-                    </p>
-                    <p className="text-xs text-muted">
-                      This feature is not yet available on the web. Please use the mobile app to export your private key securely.
-                    </p>
-                    <button
-                      onClick={() => setShowExportWarning(false)}
-                      className="w-full py-3 rounded-xl bg-gray-100 text-text-primary font-medium text-sm"
-                    >
-                      Close
-                    </button>
+
+                    {!exportSecrets ? (
+                      <>
+                        <div className="bg-red-50 rounded-xl p-3">
+                          <p className="text-sm text-red-600">
+                            Your private key and recovery phrase give full access to your wallet and funds. Never share them with anyone.
+                          </p>
+                        </div>
+                        <p className="text-sm text-text-secondary text-center">
+                          Enter your password to export your wallet secrets.
+                        </p>
+                        <div className="relative">
+                          <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+                          <input
+                            type="password"
+                            value={exportPassword}
+                            onChange={(e) => { setExportPassword(e.target.value); setExportError(''); }}
+                            onKeyDown={(e) => e.key === 'Enter' && handleExportWallet()}
+                            placeholder="Password"
+                            className="w-full pl-10 pr-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-primary"
+                          />
+                        </div>
+                        {exportError && <p className="text-sm text-error">{exportError}</p>}
+                        <button
+                          onClick={handleExportWallet}
+                          disabled={!exportPassword.trim() || exportLoading}
+                          className="w-full py-3 rounded-xl bg-warning text-white font-medium text-sm disabled:opacity-50 flex items-center justify-center gap-2"
+                        >
+                          {exportLoading ? <Loader2 size={16} className="animate-spin" /> : <Key size={16} />}
+                          {exportLoading ? 'Exporting...' : 'Export Wallet'}
+                        </button>
+                        <button onClick={closeExportModal} className="w-full py-2 text-sm text-muted hover:text-text-primary">
+                          Cancel
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        {/* Address */}
+                        {exportSecrets.address && (
+                          <div className="bg-gray-50 rounded-xl p-3 space-y-1">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-semibold text-text-secondary">Wallet Address</span>
+                              <button onClick={() => copySecret(exportSecrets.address!, 'Address')} className="p-1 hover:bg-gray-200 rounded">
+                                <Copy size={14} className="text-primary-deep" />
+                              </button>
+                            </div>
+                            <code className="text-xs break-all text-text-primary block">{exportSecrets.address}</code>
+                          </div>
+                        )}
+
+                        {/* Private Key */}
+                        {exportSecrets.privateKey && (
+                          <div className="bg-gray-50 rounded-xl p-3 space-y-1">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-semibold text-text-secondary">Private Key</span>
+                              <div className="flex gap-1">
+                                <button onClick={() => setShowPrivateKey(!showPrivateKey)} className="p-1 hover:bg-gray-200 rounded">
+                                  {showPrivateKey ? <EyeOff size={14} className="text-primary-deep" /> : <Eye size={14} className="text-primary-deep" />}
+                                </button>
+                                <button onClick={() => copySecret(exportSecrets.privateKey!, 'Private key')} className="p-1 hover:bg-gray-200 rounded">
+                                  <Copy size={14} className="text-primary-deep" />
+                                </button>
+                              </div>
+                            </div>
+                            <code className="text-xs break-all text-text-primary block font-mono">
+                              {showPrivateKey ? exportSecrets.privateKey : '*'.repeat(64)}
+                            </code>
+                          </div>
+                        )}
+
+                        {/* Mnemonic */}
+                        {exportSecrets.mnemonic && (
+                          <div className="bg-gray-50 rounded-xl p-3 space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-semibold text-text-secondary">Recovery Phrase</span>
+                              <div className="flex gap-1">
+                                <button onClick={() => setShowMnemonic(!showMnemonic)} className="p-1 hover:bg-gray-200 rounded">
+                                  {showMnemonic ? <EyeOff size={14} className="text-primary-deep" /> : <Eye size={14} className="text-primary-deep" />}
+                                </button>
+                                <button onClick={() => copySecret(exportSecrets.mnemonic!, 'Recovery phrase')} className="p-1 hover:bg-gray-200 rounded">
+                                  <Copy size={14} className="text-primary-deep" />
+                                </button>
+                              </div>
+                            </div>
+                            {showMnemonic ? (
+                              <div className="grid grid-cols-3 gap-2">
+                                {exportSecrets.mnemonic.split(' ').map((word, i) => (
+                                  <div key={i} className="bg-white rounded-lg px-2 py-1 text-xs">
+                                    <span className="text-muted">{i + 1}.</span> <span className="font-medium">{word}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="bg-white rounded-lg px-3 py-2 text-xs text-center text-muted">
+                                * * * * * * * * * * * *
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Chain */}
+                        {exportSecrets.chain && (
+                          <div className="bg-gray-50 rounded-xl p-3 flex items-center gap-2">
+                            <span className="text-xs text-text-secondary">Network:</span>
+                            <span className="text-xs font-medium text-text-primary">{exportSecrets.chain}</span>
+                          </div>
+                        )}
+
+                        {/* Warning */}
+                        <div className="bg-red-50 rounded-xl p-3 flex items-start gap-2">
+                          <AlertTriangle size={14} className="text-red-500 shrink-0 mt-0.5" />
+                          <p className="text-xs text-red-600">
+                            {exportSecrets.warning || 'Never share your private key or mnemonic with anyone.'}
+                          </p>
+                        </div>
+
+                        <button onClick={closeExportModal} className="w-full py-3 rounded-xl bg-gray-100 text-text-primary font-medium text-sm">
+                          Done
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               )}
