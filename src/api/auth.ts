@@ -28,6 +28,12 @@ export const authApi = {
   walletLogin: (walletAddress: string) =>
     client.post<APIResponse<AuthTokens>>('/auth/wallet/login', { walletAddress }),
 
+  walletTrialSendCode: (email: string) =>
+    client.post<APIResponse<{ email: string; expiresIn?: number; alreadyVerified?: boolean }>>('/auth/wallet/trial/send-code', { email }),
+
+  walletTrialVerifyCode: (code: string) =>
+    client.post<APIResponse<{ verified: boolean; email?: string; freeTokenGranted?: boolean; tokensGranted?: number; gasSent?: string; alreadyVerified?: boolean }>>('/auth/wallet/trial/verify-code', { code }),
+
   refresh: (refreshToken: string) =>
     client.post<APIResponse<{ accessToken: string; refreshToken: string }>>('/auth/refresh', { refreshToken }),
 
