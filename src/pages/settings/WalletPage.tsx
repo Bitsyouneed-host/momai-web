@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { ArrowLeft, Wallet, Copy, Check, ExternalLink, Loader2, History, Coins, AlertTriangle, Info, Key, Eye, EyeOff, Lock } from 'lucide-react';
+import { ArrowLeft, Wallet, Copy, Check, ExternalLink, Loader2, History, Coins, AlertTriangle, Info, Key, Eye, EyeOff, Mail } from 'lucide-react';
 import GlassCard from '../../components/ui/GlassCard';
 import PrimaryButton from '../../components/ui/PrimaryButton';
 import EmptyState from '../../components/ui/EmptyState';
@@ -21,7 +21,9 @@ export default function WalletPage() {
   const [avaxBalance, setAvaxBalance] = useState<string | null>(null);
   const [usdtBalance, setUsdtBalance] = useState<string | null>(null);
   const [showExportModal, setShowExportModal] = useState(false);
-  const [exportPassword, setExportPassword] = useState('');
+  const [exportStep, setExportStep] = useState<'warning' | 'code' | 'secrets'>('warning');
+  const [exportCode, setExportCode] = useState('');
+  const [exportMaskedEmail, setExportMaskedEmail] = useState('');
   const [exportLoading, setExportLoading] = useState(false);
   const [exportError, setExportError] = useState('');
   const [exportSecrets, setExportSecrets] = useState<{ address?: string; privateKey?: string; mnemonic?: string; chain?: string; warning?: string } | null>(null);
@@ -81,20 +83,39 @@ export default function WalletPage() {
     }
   };
 
-  const handleExportWallet = async () => {
-    if (!exportPassword.trim()) return;
+  const handleExportSendCode = async () => {
     setExportLoading(true);
     setExportError('');
     try {
-      const { data } = await usersApi.exportWallet(exportPassword);
+      const { data } = await usersApi.exportWalletSendCode();
+      if (data.success && data.data) {
+        setExportMaskedEmail((data.data as Record<string, string>).email || '');
+        setExportStep('code');
+      } else {
+        setExportError((data as unknown as Record<string, string>).message || 'Failed to send code');
+      }
+    } catch {
+      setExportError('Failed to send verification code');
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
+  const handleExportVerifyCode = async () => {
+    if (exportCode.length !== 6) return;
+    setExportLoading(true);
+    setExportError('');
+    try {
+      const { data } = await usersApi.exportWalletVerifyCode(exportCode);
       if (data.success && data.data) {
         setExportSecrets(data.data);
+        setExportStep('secrets');
       } else {
-        setExportError((data as unknown as Record<string, string>).error || 'Failed to export wallet');
+        setExportError((data as unknown as Record<string, string>).message || 'Verification failed');
       }
     } catch (err: unknown) {
-      const axiosErr = err as { response?: { status: number } };
-      setExportError(axiosErr.response?.status === 401 ? 'Incorrect password' : 'Export failed');
+      const axiosErr = err as { response?: { status: number; data?: { message?: string } } };
+      setExportError(axiosErr.response?.data?.message || (axiosErr.response?.status === 401 ? 'Incorrect code' : 'Verification failed'));
     } finally {
       setExportLoading(false);
     }
@@ -107,7 +128,9 @@ export default function WalletPage() {
 
   const closeExportModal = () => {
     setShowExportModal(false);
-    setExportPassword('');
+    setExportStep('warning');
+    setExportCode('');
+    setExportMaskedEmail('');
     setExportError('');
     setExportSecrets(null);
     setShowPrivateKey(false);
@@ -207,7 +230,7 @@ export default function WalletPage() {
                       <h3 className="font-bold text-lg">Export Private Key</h3>
                     </div>
 
-                    {!exportSecrets ? (
+                    {exportStep === 'warning' ? (
                       <>
                         <div className="bg-red-50 rounded-xl p-3">
                           <p className="text-sm text-red-600">
@@ -215,27 +238,51 @@ export default function WalletPage() {
                           </p>
                         </div>
                         <p className="text-sm text-text-secondary text-center">
-                          Enter your password to export your wallet secrets.
+                          We&apos;ll send a verification code to your email to confirm your identity.
                         </p>
-                        <div className="relative">
-                          <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
-                          <input
-                            type="password"
-                            value={exportPassword}
-                            onChange={(e) => { setExportPassword(e.target.value); setExportError(''); }}
-                            onKeyDown={(e) => e.key === 'Enter' && handleExportWallet()}
-                            placeholder="Password"
-                            className="w-full pl-10 pr-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-primary"
-                          />
-                        </div>
                         {exportError && <p className="text-sm text-error">{exportError}</p>}
                         <button
-                          onClick={handleExportWallet}
-                          disabled={!exportPassword.trim() || exportLoading}
+                          onClick={handleExportSendCode}
+                          disabled={exportLoading}
+                          className="w-full py-3 rounded-xl bg-warning text-white font-medium text-sm disabled:opacity-50 flex items-center justify-center gap-2"
+                        >
+                          {exportLoading ? <Loader2 size={16} className="animate-spin" /> : <Mail size={16} />}
+                          {exportLoading ? 'Sending...' : 'Send Verification Code'}
+                        </button>
+                        <button onClick={closeExportModal} className="w-full py-2 text-sm text-muted hover:text-text-primary">
+                          Cancel
+                        </button>
+                      </>
+                    ) : exportStep === 'code' ? (
+                      <>
+                        <p className="text-sm text-text-secondary text-center">
+                          Enter the 6-digit code sent to <span className="font-medium">{exportMaskedEmail}</span>
+                        </p>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          maxLength={6}
+                          value={exportCode}
+                          onChange={(e) => { setExportCode(e.target.value.replace(/\D/g, '')); setExportError(''); }}
+                          onKeyDown={(e) => e.key === 'Enter' && handleExportVerifyCode()}
+                          placeholder="000000"
+                          className="w-full text-center text-2xl tracking-[0.5em] py-3 rounded-xl border border-gray-200 font-mono focus:outline-none focus:border-primary"
+                        />
+                        {exportError && <p className="text-sm text-error">{exportError}</p>}
+                        <button
+                          onClick={handleExportVerifyCode}
+                          disabled={exportCode.length !== 6 || exportLoading}
                           className="w-full py-3 rounded-xl bg-warning text-white font-medium text-sm disabled:opacity-50 flex items-center justify-center gap-2"
                         >
                           {exportLoading ? <Loader2 size={16} className="animate-spin" /> : <Key size={16} />}
-                          {exportLoading ? 'Exporting...' : 'Export Wallet'}
+                          {exportLoading ? 'Verifying...' : 'Verify & Export'}
+                        </button>
+                        <button
+                          onClick={handleExportSendCode}
+                          disabled={exportLoading}
+                          className="w-full py-2 text-sm text-muted hover:text-text-primary"
+                        >
+                          Resend Code
                         </button>
                         <button onClick={closeExportModal} className="w-full py-2 text-sm text-muted hover:text-text-primary">
                           Cancel
