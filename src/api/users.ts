@@ -23,4 +23,10 @@ export const usersApi = {
 
   exportWalletVerifyCode: (code: string) =>
     client.post<APIResponse<{ address?: string; privateKey?: string; mnemonic?: string; chain?: string; warning?: string }>>('/users/me/wallet/export/verify-code', { code }),
+
+  sendFundsSendCode: (data?: { tokenType?: string; amount?: string; to?: string }) =>
+    client.post<APIResponse<{ email: string; expiresIn: number }>>('/users/me/wallet/send/send-code', data),
+
+  sendFundsConfirm: (data: { code: string; to: string; tokenType: string; amount: string; tokenId?: number }) =>
+    client.post<APIResponse<{ txHash: string; explorer: string }>>('/users/me/wallet/send/confirm', data),
 };

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { ArrowLeft, Wallet, Copy, Check, ExternalLink, Loader2, History, Coins, AlertTriangle, Info, Key, Eye, EyeOff, Mail } from 'lucide-react';
+import { ArrowLeft, Wallet, Copy, Check, ExternalLink, Loader2, History, Coins, AlertTriangle, Info, Key, Eye, EyeOff, Mail, Send } from 'lucide-react';
 import GlassCard from '../../components/ui/GlassCard';
 import PrimaryButton from '../../components/ui/PrimaryButton';
 import EmptyState from '../../components/ui/EmptyState';
@@ -30,6 +30,20 @@ export default function WalletPage() {
   const [showPrivateKey, setShowPrivateKey] = useState(false);
   const [showMnemonic, setShowMnemonic] = useState(false);
 
+  // Send funds state
+  const [showSendModal, setShowSendModal] = useState(false);
+  const [sendStep, setSendStep] = useState<'details' | 'code' | 'success'>('details');
+  const [sendToken, setSendToken] = useState<'avax' | 'usdt' | 'momai' | 'nft'>('avax');
+  const [sendTo, setSendTo] = useState('');
+  const [sendAmount, setSendAmount] = useState('');
+  const [sendCode, setSendCode] = useState('');
+  const [sendMaskedEmail, setSendMaskedEmail] = useState('');
+  const [sendLoading, setSendLoading] = useState(false);
+  const [sendError, setSendError] = useState('');
+  const [sendTxHash, setSendTxHash] = useState('');
+  const [sendExplorerUrl, setSendExplorerUrl] = useState('');
+  const [seasonPassTokenId, setSeasonPassTokenId] = useState<string | null>(null);
+
   const walletAddress = user?.walletAddress || user?.generatedWallet?.address;
   const isGeneratedWallet = user?.authMethod === 'email' && user?.generatedWallet?.address;
 
@@ -53,6 +67,10 @@ export default function WalletPage() {
           if (walletData.usdtBalance) {
             const ub = walletData.usdtBalance as { balance: string };
             setUsdtBalance(ub.balance);
+          }
+          if (walletData.seasonPass) {
+            const sp = walletData.seasonPass as { tokenId?: string };
+            setSeasonPassTokenId(sp.tokenId || null);
           }
         }
       }).catch(() => {});
@@ -137,6 +155,84 @@ export default function WalletPage() {
     setShowMnemonic(false);
   };
 
+  const isValidAddress = (addr: string) => /^0x[a-fA-F0-9]{40}$/.test(addr);
+
+  const TOKEN_OPTIONS = [
+    { type: 'avax' as const, label: 'AVAX' },
+    { type: 'usdt' as const, label: 'USDT' },
+    { type: 'momai' as const, label: 'MOMAI' },
+    { type: 'nft' as const, label: 'Season Pass' },
+  ];
+
+  const getSendBalance = (type: string) => {
+    switch (type) {
+      case 'avax': return avaxBalance ? `${parseFloat(avaxBalance).toFixed(4)} AVAX` : '...';
+      case 'usdt': return usdtBalance ? `${parseFloat(usdtBalance).toFixed(2)} USDT` : '...';
+      case 'momai': return `${tokenBalance} MOMAI`;
+      case 'nft': return seasonPassTokenId ? `Token #${seasonPassTokenId}` : 'None';
+      default: return '0';
+    }
+  };
+
+  const handleSendCode = async () => {
+    if (!isValidAddress(sendTo)) { setSendError('Invalid wallet address'); return; }
+    if (sendToken !== 'nft' && (!sendAmount || parseFloat(sendAmount) <= 0)) { setSendError('Enter a valid amount'); return; }
+    if (sendToken === 'nft' && !seasonPassTokenId) { setSendError('No season pass found'); return; }
+    setSendLoading(true);
+    setSendError('');
+    try {
+      const amt = sendToken === 'nft' ? (seasonPassTokenId || '0') : sendAmount;
+      const { data } = await usersApi.sendFundsSendCode({ tokenType: sendToken, amount: amt, to: sendTo });
+      if (data.success && data.data) {
+        setSendMaskedEmail((data.data as Record<string, string>).email || '');
+        setSendStep('code');
+      } else {
+        setSendError((data as unknown as Record<string, string>).message || 'Failed to send code');
+      }
+    } catch {
+      setSendError('Failed to send verification code');
+    } finally {
+      setSendLoading(false);
+    }
+  };
+
+  const handleSendConfirm = async () => {
+    if (sendCode.length !== 6) return;
+    setSendLoading(true);
+    setSendError('');
+    try {
+      const amt = sendToken === 'nft' ? (seasonPassTokenId || '0') : sendAmount;
+      const nftTokenId = sendToken === 'nft' ? parseInt(seasonPassTokenId || '0') : undefined;
+      const { data } = await usersApi.sendFundsConfirm({ code: sendCode, to: sendTo, tokenType: sendToken, amount: amt, tokenId: nftTokenId });
+      if (data.success && data.data) {
+        setSendTxHash(data.data.txHash);
+        setSendExplorerUrl(data.data.explorer);
+        setSendStep('success');
+      } else {
+        setSendError((data as unknown as Record<string, string>).message || 'Transfer failed');
+      }
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { status: number; data?: { message?: string } } };
+      const msg = axiosErr.response?.data?.message || '';
+      setSendError(msg.includes('insufficient') ? 'Insufficient funds' : (axiosErr.response?.status === 401 ? 'Incorrect code' : 'Transfer failed'));
+    } finally {
+      setSendLoading(false);
+    }
+  };
+
+  const closeSendModal = () => {
+    setShowSendModal(false);
+    setSendStep('details');
+    setSendToken('avax');
+    setSendTo('');
+    setSendAmount('');
+    setSendCode('');
+    setSendMaskedEmail('');
+    setSendError('');
+    setSendTxHash('');
+    setSendExplorerUrl('');
+  };
+
   const reasonLabels: Record<string, string> = {
     call: 'AI Call',
     cancel: 'Cancellation',
@@ -211,6 +307,179 @@ export default function WalletPage() {
               </div>
             </div>
           </GlassCard>
+
+          {/* Send Funds */}
+          <button
+            onClick={() => setShowSendModal(true)}
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-primary text-white text-sm font-medium hover:bg-primary-dark"
+          >
+            <Send size={16} /> Send Funds
+          </button>
+
+          {showSendModal && (
+            <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={closeSendModal}>
+              <div className="bg-white rounded-2xl max-w-md w-full p-5 space-y-4 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center gap-2 text-primary-deep">
+                  <Send size={24} />
+                  <h3 className="font-bold text-lg">Send Funds</h3>
+                </div>
+
+                {sendStep === 'details' ? (
+                  <>
+                    <div className="bg-orange-50 rounded-xl p-3 flex items-start gap-2">
+                      <AlertTriangle size={14} className="text-warning shrink-0 mt-0.5" />
+                      <p className="text-xs text-warning">Blockchain transfers are irreversible. Double-check the address and amount.</p>
+                    </div>
+
+                    {/* Token selector */}
+                    <div>
+                      <label className="text-xs font-semibold text-text-secondary block mb-2">Select Token</label>
+                      <div className="grid grid-cols-4 gap-2">
+                        {TOKEN_OPTIONS.map((opt) => (
+                          <button
+                            key={opt.type}
+                            onClick={() => { setSendToken(opt.type); setSendError(''); }}
+                            className={`py-2 rounded-lg text-xs font-medium transition-colors ${
+                              sendToken === opt.type
+                                ? 'bg-primary text-white'
+                                : 'bg-gray-100 text-text-secondary hover:bg-gray-200'
+                            }`}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Balance */}
+                    <div className="bg-gray-50 rounded-xl p-3 flex items-center gap-2">
+                      <Wallet size={14} className="text-primary-deep" />
+                      <span className="text-xs text-text-secondary">Balance:</span>
+                      <span className="text-xs font-bold text-text-primary">{getSendBalance(sendToken)}</span>
+                    </div>
+
+                    {/* Recipient */}
+                    <input
+                      type="text"
+                      value={sendTo}
+                      onChange={(e) => { setSendTo(e.target.value.trim()); setSendError(''); }}
+                      placeholder="Recipient address (0x...)"
+                      className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-primary"
+                    />
+
+                    {/* Amount (hidden for NFT) */}
+                    {sendToken !== 'nft' ? (
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={sendAmount}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          if (v === '' || /^\d*\.?\d*$/.test(v)) { setSendAmount(v); setSendError(''); }
+                        }}
+                        placeholder={`Amount (${TOKEN_OPTIONS.find((o) => o.type === sendToken)?.label})`}
+                        className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-primary"
+                      />
+                    ) : seasonPassTokenId ? (
+                      <div className="bg-gray-50 rounded-xl p-3 text-xs">
+                        <span className="text-text-secondary">Sending:</span>{' '}
+                        <span className="font-bold">Season Pass #{seasonPassTokenId}</span>
+                      </div>
+                    ) : null}
+
+                    {sendError && <p className="text-sm text-error">{sendError}</p>}
+
+                    <button
+                      onClick={handleSendCode}
+                      disabled={sendLoading || !sendTo || (sendToken !== 'nft' && !sendAmount)}
+                      className="w-full py-3 rounded-xl bg-primary text-white font-medium text-sm disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      {sendLoading ? <Loader2 size={16} className="animate-spin" /> : <Mail size={16} />}
+                      {sendLoading ? 'Sending...' : 'Send Verification Code'}
+                    </button>
+                    <button onClick={closeSendModal} className="w-full py-2 text-sm text-muted hover:text-text-primary">Cancel</button>
+                  </>
+                ) : sendStep === 'code' ? (
+                  <>
+                    <p className="text-sm text-text-secondary text-center">
+                      Enter the 6-digit code sent to <span className="font-medium">{sendMaskedEmail}</span>
+                    </p>
+
+                    {/* Transfer summary */}
+                    <div className="bg-gray-50 rounded-xl p-3 space-y-1 text-xs">
+                      <div className="flex justify-between">
+                        <span className="text-text-secondary">Sending</span>
+                        <span className="font-bold">
+                          {sendToken === 'nft' ? `Season Pass #${seasonPassTokenId}` : `${sendAmount} ${TOKEN_OPTIONS.find((o) => o.type === sendToken)?.label}`}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-text-secondary">To</span>
+                        <span className="font-bold font-mono">{sendTo.slice(0, 8)}...{sendTo.slice(-6)}</span>
+                      </div>
+                    </div>
+
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={6}
+                      value={sendCode}
+                      onChange={(e) => { setSendCode(e.target.value.replace(/\D/g, '')); setSendError(''); }}
+                      onKeyDown={(e) => e.key === 'Enter' && handleSendConfirm()}
+                      placeholder="000000"
+                      className="w-full text-center text-2xl tracking-[0.5em] py-3 rounded-xl border border-gray-200 font-mono focus:outline-none focus:border-primary"
+                    />
+                    {sendError && <p className="text-sm text-error">{sendError}</p>}
+                    <button
+                      onClick={handleSendConfirm}
+                      disabled={sendCode.length !== 6 || sendLoading}
+                      className="w-full py-3 rounded-xl bg-primary text-white font-medium text-sm disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      {sendLoading ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                      {sendLoading ? 'Sending...' : 'Confirm & Send'}
+                    </button>
+                    <button onClick={handleSendCode} disabled={sendLoading} className="w-full py-2 text-sm text-muted hover:text-text-primary">Resend Code</button>
+                    <button onClick={closeSendModal} className="w-full py-2 text-sm text-muted hover:text-text-primary">Cancel</button>
+                  </>
+                ) : (
+                  <>
+                    <div className="text-center py-4">
+                      <div className="w-16 h-16 rounded-full bg-success/10 flex items-center justify-center mx-auto mb-3">
+                        <Check size={32} className="text-success" />
+                      </div>
+                      <h4 className="text-lg font-bold text-text-primary">Transfer Sent!</h4>
+                      <p className="text-sm text-text-secondary">Your transaction has been submitted to the blockchain.</p>
+                    </div>
+
+                    <div className="bg-gray-50 rounded-xl p-3 space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-text-secondary">Transaction Hash</span>
+                        <button onClick={() => copySecret(sendTxHash, 'Hash')} className="p-1 hover:bg-gray-200 rounded">
+                          <Copy size={14} className="text-primary-deep" />
+                        </button>
+                      </div>
+                      <code className="text-xs break-all text-text-primary block font-mono">
+                        {sendTxHash.slice(0, 12)}...{sendTxHash.slice(-8)}
+                      </code>
+                    </div>
+
+                    {sendExplorerUrl && (
+                      <a
+                        href={sendExplorerUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-gray-200 text-sm font-medium text-primary-deep hover:bg-gray-50"
+                      >
+                        <ExternalLink size={16} /> View on Snowtrace
+                      </a>
+                    )}
+
+                    <button onClick={closeSendModal} className="w-full py-3 rounded-xl bg-gray-100 text-text-primary font-medium text-sm">Done</button>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Export Private Key */}
           {isGeneratedWallet && (
