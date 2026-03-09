@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Wand2, Shield, Clock, Sparkles, Plus, Calendar, Phone } from 'lucide-react';
+import { ethers } from 'ethers';
 import GlassCard from '../../components/ui/GlassCard';
 import StatusBadge from '../../components/ui/StatusBadge';
 import { useAuthStore } from '../../stores/authStore';
 import { useSubscriptionStore } from '../../stores/subscriptionStore';
 import { appointmentsApi } from '../../api/appointments';
+import { usersApi } from '../../api/users';
+import { ACTIVE_CHAIN, NFT_CONTRACT_ADDRESS, NFT_ABI } from '../../lib/contracts';
 import type { Appointment } from '../../types/appointment';
 
 export default function HomePage() {
@@ -13,6 +16,37 @@ export default function HomePage() {
   const user = useAuthStore((s) => s.user);
   const { subscription, tokenBalance, useTokenSystem } = useSubscriptionStore();
   const [upcoming, setUpcoming] = useState<Appointment[]>([]);
+  const [passInfo, setPassInfo] = useState<{ tokenId: string; tier: string; callsPerMonth: number; daysRemaining: number; expiresAt: Date; isValid: boolean } | null>(null);
+
+  const walletAddress = user?.walletAddress || user?.generatedWallet?.address;
+
+  // Fetch season pass token ID from backend, then read on-chain
+  useEffect(() => {
+    if (!walletAddress) return;
+    usersApi.getWalletInfo().then(({ data }) => {
+      if (data.success && data.data) {
+        const sp = (data.data as Record<string, unknown>).seasonPass as { tokenId?: string } | undefined;
+        if (sp?.tokenId) {
+          const tokenId = sp.tokenId;
+          const provider = new ethers.JsonRpcProvider(ACTIVE_CHAIN.rpcUrl);
+          const nftAddress = NFT_CONTRACT_ADDRESS[ACTIVE_CHAIN.chainId];
+          if (!nftAddress) return;
+          const contract = new ethers.Contract(nftAddress, NFT_ABI, provider);
+          Promise.all([contract.getPassInfo(tokenId), contract.daysRemaining(tokenId)]).then(([info, days]) => {
+            const tierNum = Number(info[0]);
+            setPassInfo({
+              tokenId,
+              tier: tierNum === 2 ? 'Pro+' : tierNum === 1 ? 'Pro' : 'Unknown',
+              callsPerMonth: Number(info[1]),
+              daysRemaining: Number(days),
+              expiresAt: new Date(Number(info[3]) * 1000),
+              isValid: info[5],
+            });
+          }).catch(() => {});
+        }
+      }
+    }).catch(() => {});
+  }, [walletAddress]);
 
   useEffect(() => {
     appointmentsApi.list({ status: 'scheduled' }).then(({ data }) => {
@@ -97,6 +131,40 @@ export default function HomePage() {
           </p>
         )}
       </GlassCard>
+
+      {/* Season Pass NFT */}
+      {passInfo && (
+        <GlassCard className={passInfo.isValid ? '!border-success/30 !bg-success/5' : '!border-error/30 !bg-error/5'}>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Shield size={18} className={passInfo.isValid ? 'text-success' : 'text-error'} />
+              <span className="text-sm font-semibold text-text-primary">Season Pass #{passInfo.tokenId}</span>
+            </div>
+            <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${passInfo.isValid ? 'bg-success/10 text-success' : 'bg-error/10 text-error'}`}>
+              {passInfo.isValid ? 'Active' : 'Expired'}
+            </span>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <div className="text-[10px] text-text-secondary">Tier</div>
+              <div className="text-sm font-bold text-text-primary">{passInfo.tier}</div>
+            </div>
+            <div>
+              <div className="text-[10px] text-text-secondary">Calls/Month</div>
+              <div className="text-sm font-bold text-text-primary">{passInfo.callsPerMonth}</div>
+            </div>
+            <div>
+              <div className="text-[10px] text-text-secondary flex items-center gap-1"><Clock size={10} /> Remaining</div>
+              <div className={`text-sm font-bold ${passInfo.daysRemaining <= 7 ? 'text-warning' : 'text-text-primary'}`}>
+                {passInfo.daysRemaining} {passInfo.daysRemaining === 1 ? 'day' : 'days'}
+              </div>
+            </div>
+          </div>
+          <div className="mt-2 text-[10px] text-muted">
+            Expires {passInfo.expiresAt.toLocaleDateString()}
+          </div>
+        </GlassCard>
+      )}
 
       {/* MOM ME Hero Button */}
       <button
