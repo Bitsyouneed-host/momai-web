@@ -28,6 +28,7 @@ export interface GeneratedWallet {
   provider: 'local' | 'coinbase' | 'external';
   address: string;
   chain: string;
+  isGenerated?: boolean;
 }
 
 export interface Insurance {

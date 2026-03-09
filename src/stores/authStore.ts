@@ -59,6 +59,7 @@ export const useAuthStore = create<AuthState>((set) => ({
             provider: walletInfo.provider as 'local' | 'coinbase' | 'external',
             address: walletInfo.address,
             chain: walletInfo.chain,
+            isGenerated: walletInfo.isGenerated,
           } : (rawUser.generatedWallet as User['generatedWallet']),
           subscription: rawUser.subscription as User['subscription'],
           isActive: (rawUser.isActive ?? true) as boolean,
