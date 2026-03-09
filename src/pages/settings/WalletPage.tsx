@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { ArrowLeft, Wallet, Copy, Check, ExternalLink, Loader2, History, Coins, AlertTriangle, Info, Key, Eye, EyeOff, Mail, Send } from 'lucide-react';
+import { ArrowLeft, Wallet, Copy, Check, ExternalLink, Loader2, History, Coins, AlertTriangle, Info, Key, Eye, EyeOff, Mail, Send, Shield, Clock } from 'lucide-react';
+import { ethers } from 'ethers';
 import GlassCard from '../../components/ui/GlassCard';
 import PrimaryButton from '../../components/ui/PrimaryButton';
 import EmptyState from '../../components/ui/EmptyState';
@@ -9,6 +10,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { useSubscriptionStore } from '../../stores/subscriptionStore';
 import { tokensApi, type TokenSpend } from '../../api/tokens';
 import { usersApi } from '../../api/users';
+import { ACTIVE_CHAIN, NFT_CONTRACT_ADDRESS, NFT_ABI } from '../../lib/contracts';
 
 export default function WalletPage() {
   const navigate = useNavigate();
@@ -43,6 +45,7 @@ export default function WalletPage() {
   const [sendTxHash, setSendTxHash] = useState('');
   const [sendExplorerUrl, setSendExplorerUrl] = useState('');
   const [seasonPassTokenId, setSeasonPassTokenId] = useState<string | null>(null);
+  const [passInfo, setPassInfo] = useState<{ tier: string; callsPerMonth: number; daysRemaining: number; expiresAt: Date; isValid: boolean } | null>(null);
 
   const walletAddress = user?.walletAddress || user?.generatedWallet?.address;
   const isGeneratedWallet = user?.authMethod === 'email' && user?.generatedWallet?.address;
@@ -76,6 +79,34 @@ export default function WalletPage() {
       }).catch(() => {});
     }
   }, [walletAddress]);
+
+  // Read season pass info directly from the NFT contract on-chain
+  useEffect(() => {
+    if (!seasonPassTokenId) return;
+    const readPassOnChain = async () => {
+      try {
+        const provider = new ethers.JsonRpcProvider(ACTIVE_CHAIN.rpcUrl);
+        const nftAddress = NFT_CONTRACT_ADDRESS[ACTIVE_CHAIN.chainId];
+        if (!nftAddress) return;
+        const contract = new ethers.Contract(nftAddress, NFT_ABI, provider);
+        const [info, days] = await Promise.all([
+          contract.getPassInfo(seasonPassTokenId),
+          contract.daysRemaining(seasonPassTokenId),
+        ]);
+        const tierNum = Number(info[0]);
+        setPassInfo({
+          tier: tierNum === 2 ? 'Pro+' : tierNum === 1 ? 'Pro' : 'Unknown',
+          callsPerMonth: Number(info[1]),
+          daysRemaining: Number(days),
+          expiresAt: new Date(Number(info[3]) * 1000),
+          isValid: info[5],
+        });
+      } catch {
+        // Token may not exist on-chain or contract not reachable
+      }
+    };
+    readPassOnChain();
+  }, [seasonPassTokenId]);
 
   const copyAddress = async () => {
     if (!walletAddress) return;
@@ -293,6 +324,40 @@ export default function WalletPage() {
               <div className="text-[10px] text-muted">Available</div>
             </GlassCard>
           </div>
+
+          {/* Season Pass NFT */}
+          {passInfo && (
+            <GlassCard className={passInfo.isValid ? '!border-success/30 !bg-success/5' : '!border-error/30 !bg-error/5'}>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Shield size={18} className={passInfo.isValid ? 'text-success' : 'text-error'} />
+                  <span className="text-sm font-semibold text-text-primary">Season Pass #{seasonPassTokenId}</span>
+                </div>
+                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${passInfo.isValid ? 'bg-success/10 text-success' : 'bg-error/10 text-error'}`}>
+                  {passInfo.isValid ? 'Active' : 'Expired'}
+                </span>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <div className="text-[10px] text-text-secondary">Tier</div>
+                  <div className="text-sm font-bold text-text-primary">{passInfo.tier}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] text-text-secondary">Calls/Month</div>
+                  <div className="text-sm font-bold text-text-primary">{passInfo.callsPerMonth}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] text-text-secondary flex items-center gap-1"><Clock size={10} /> Remaining</div>
+                  <div className={`text-sm font-bold ${passInfo.daysRemaining <= 7 ? 'text-warning' : 'text-text-primary'}`}>
+                    {passInfo.daysRemaining} {passInfo.daysRemaining === 1 ? 'day' : 'days'}
+                  </div>
+                </div>
+              </div>
+              <div className="mt-2 text-[10px] text-muted">
+                Expires {passInfo.expiresAt.toLocaleDateString()}
+              </div>
+            </GlassCard>
+          )}
 
           {/* Fund Wallet */}
           <GlassCard className="!bg-primary/5 !border-primary/20">

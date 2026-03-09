@@ -45,6 +45,9 @@ export const NFT_ABI = [
   'function getUSDPrice(uint8 tier, uint8 durationMonths) public view returns (uint256)',
   'function hasValidPass(address owner) external view returns (bool)',
   'function getValidPassForOwner(address owner) external view returns (uint256)',
+  'function isValid(uint256 tokenId) public view returns (bool)',
+  'function daysRemaining(uint256 tokenId) public view returns (uint256)',
+  'function getPassInfo(uint256 tokenId) external view returns (uint8 tier, uint32 callsPerMonth, uint64 startDate, uint64 expiresAt, string purchaseChain, bool valid)',
   'event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)',
 ];
 
