@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { X, Smartphone } from 'lucide-react';
 
 const DISMISS_KEY = 'momai_app_banner_dismissed';
-const APP_RELEASE_URL = 'https://github.com/Bitsyouneed-host/momai-android-releases/releases/latest';
+const APP_RELEASE_URL = 'https://github.com/Bitsyouneed-host/momai-android-apk/releases/latest';
 
 function isAndroid() {
   return /android/i.test(navigator.userAgent);
