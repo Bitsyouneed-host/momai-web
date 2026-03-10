@@ -29,4 +29,7 @@ export const usersApi = {
 
   sendFundsConfirm: (data: { code: string; to: string; tokenType: string; amount: string; tokenId?: number }) =>
     client.post<APIResponse<{ txHash: string; explorer: string }>>('/users/me/wallet/send/confirm', data),
+
+  deleteAccount: () =>
+    client.delete('/users/me'),
 };
