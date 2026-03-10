@@ -40,8 +40,24 @@ export default function NewBookingPage() {
       const preCheck = await bookingApi.preCheck();
       const preCheckData = preCheck.data as unknown as Record<string, unknown>;
       if (!preCheckData.canBook) {
-        toast.error((preCheckData.message as string) || 'Cannot book at this time');
-        return;
+        if (preCheckData.code === 'NEEDS_APPROVAL' || preCheckData.needsApproval) {
+          // Auto-approve escrow for email users with generated wallets
+          toast('Approving escrow contract...');
+          try {
+            const approveRes = await bookingApi.approveEscrow();
+            const approveData = approveRes.data as unknown as Record<string, unknown>;
+            if (!approveData.success) {
+              toast.error((approveData.message as string) || 'Failed to approve escrow contract');
+              return;
+            }
+          } catch {
+            toast.error('Failed to approve escrow contract');
+            return;
+          }
+        } else {
+          toast.error((preCheckData.message as string) || 'Cannot book at this time');
+          return;
+        }
       }
 
       const { data } = await bookingApi.create({

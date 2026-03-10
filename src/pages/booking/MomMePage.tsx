@@ -93,8 +93,23 @@ export default function MomMePage() {
       const { data: preCheck } = await bookingApi.preCheck();
       const preCheckData = preCheck as unknown as Record<string, unknown>;
       if (!preCheck.success || !preCheckData.canBook) {
-        toast.error((preCheckData.message as string) || 'Unable to book right now');
-        return;
+        if (preCheckData.code === 'NEEDS_APPROVAL' || preCheckData.needsApproval) {
+          toast('Approving escrow contract...');
+          try {
+            const approveRes = await bookingApi.approveEscrow();
+            const approveData = approveRes.data as unknown as Record<string, unknown>;
+            if (!approveData.success) {
+              toast.error((approveData.message as string) || 'Failed to approve escrow contract');
+              return;
+            }
+          } catch {
+            toast.error('Failed to approve escrow contract');
+            return;
+          }
+        } else {
+          toast.error((preCheckData.message as string) || 'Unable to book right now');
+          return;
+        }
       }
     } catch {
       toast.error('Failed to verify booking eligibility');

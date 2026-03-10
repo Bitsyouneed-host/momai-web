@@ -15,6 +15,9 @@ export const bookingApi = {
   get: (id: string) =>
     client.get<APIResponse<BookingRequest>>(`/booking/request/${id}`),
 
+  approveEscrow: () =>
+    client.post<APIResponse<{ txHash?: string }>>('/booking/approve-escrow'),
+
   cancel: (id: string) =>
     client.post<APIResponse<BookingRequest>>(`/booking/request/${id}/cancel`),
 
