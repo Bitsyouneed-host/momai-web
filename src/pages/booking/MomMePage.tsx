@@ -154,8 +154,8 @@ export default function MomMePage() {
     setStep('booking');
 
     // Generate preferred dates
-    const timePrefMap: Record<string, string> = { Morning: 'morning', Afternoon: 'afternoon', Evening: 'evening' };
-    const preferredDates: { date: string; timePreference: string }[] = [];
+    const timePrefMap: Record<string, 'morning' | 'afternoon' | 'evening' | 'any'> = { Morning: 'morning', Afternoon: 'afternoon', Evening: 'evening' };
+    const preferredDates: { date: string; timePreference: 'morning' | 'afternoon' | 'evening' | 'any' }[] = [];
     for (let i = 1; i <= 3; i++) {
       const d = new Date();
       d.setDate(d.getDate() + i);
