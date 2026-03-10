@@ -26,6 +26,7 @@ npm run dev     # http://localhost:5173
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `VITE_API_URL` | Backend API base URL | `https://backend-production-5aa0.up.railway.app/api` |
+| `VITE_GOOGLE_MAPS_API_KEY` | Google Maps API key (for provider search) | _(empty)_ |
 
 ## Features
 
@@ -37,6 +38,7 @@ npm run dev     # http://localhost:5173
 ### AI Booking
 - **MOM ME!** - Describe what you need, search providers by zip code via Google Places, AI calls/texts to book
 - **Manual AI Booking** - Enter provider phone number, AI handles the rest
+- **Auto Escrow Approval** - Automatically approves escrow contract for email users when booking (no manual on-chain interaction)
 - **Booking Status** - Track pending, in-progress, calling, success, failed, voicemail, no-answer states
 - **Transcripts** - View full AI conversation transcripts and outcomes
 
@@ -148,3 +150,11 @@ npm run preview # Preview production build locally
 ```
 
 Deployed to Railway as a static site from the `dist/` directory.
+
+## Security
+
+- All API keys and secrets are loaded from environment variables (`.env` file, gitignored)
+- JWT tokens stored in memory (Zustand store) with automatic refresh via Axios interceptor
+- Private key export and fund transfers require OTP email verification on the backend
+- No secrets are hardcoded in source code
+- `.env` is gitignored; use `.env.example` as a template
