@@ -69,7 +69,7 @@ export default function BookingPage() {
         <h1 className="text-2xl font-bold text-text-primary">MOM AI</h1>
         <button
           onClick={() => navigate('/booking/new')}
-          className="w-10 h-10 rounded-full bg-success text-white flex items-center justify-center shadow-lg hover:shadow-xl transition-shadow"
+          className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center shadow-lg hover:shadow-xl hover:bg-primary-dark transition-all"
         >
           <Plus size={20} />
         </button>
@@ -103,11 +103,18 @@ export default function BookingPage() {
 
       {/* Booking requests list */}
       {requests.length === 0 ? (
-        <EmptyState
-          icon={<Wand2 size={48} />}
-          title="No Booking Requests"
-          message="Use MOM ME to have AI book appointments for you automatically"
-        />
+        <div className="flex flex-col items-center justify-center py-16 space-y-4">
+          <Wand2 size={48} className="text-muted" />
+          <h3 className="text-lg font-semibold text-text-primary">No Booking Requests</h3>
+          <p className="text-sm text-text-secondary text-center">Use MOM ME to have AI book appointments for you automatically</p>
+          <button
+            onClick={() => navigate('/booking/new')}
+            className="mt-4 px-6 py-3 rounded-xl bg-primary text-white font-semibold flex items-center gap-2 shadow-lg hover:shadow-xl hover:bg-primary-dark transition-all"
+          >
+            <Plus size={20} />
+            Start Booking
+          </button>
+        </div>
       ) : (
         <div className="space-y-2">
           {requests.map((req) => (
