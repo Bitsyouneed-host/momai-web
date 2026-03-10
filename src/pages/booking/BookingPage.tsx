@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { Wand2, Plus, Phone, MessageSquare, Loader2, CheckCircle, XCircle, PhoneCall } from 'lucide-react';
 import GlassCard from '../../components/ui/GlassCard';
 import StatusBadge from '../../components/ui/StatusBadge';
-import EmptyState from '../../components/ui/EmptyState';
 import { bookingApi } from '../../api/booking';
 import type { BookingRequest } from '../../types/booking';
 
