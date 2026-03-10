@@ -65,11 +65,16 @@ export interface BookingRequest {
   updatedAt: string;
 }
 
+export interface PreferredDate {
+  date: string;
+  timePreference?: 'morning' | 'afternoon' | 'evening' | 'any';
+}
+
 export interface CreateBookingPayload {
   providerName: string;
   providerPhone: string;
   requestDetails?: string;
-  preferredDates?: string[];
+  preferredDates?: PreferredDate[];
   serviceType?: string;
   estimatedDuration?: number;
   contactMethod: ContactMethod;

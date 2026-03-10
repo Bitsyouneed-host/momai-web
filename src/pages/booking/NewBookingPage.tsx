@@ -65,7 +65,9 @@ export default function NewBookingPage() {
               const tx = await tokenContract.approve(escrowAddr, approvalAmount);
               toast('Waiting for confirmation...');
               await tx.wait();
-              toast.success('Escrow approved!');
+              toast.success('Escrow approved! Creating booking...');
+              // Wait for RPC to sync the approval before creating booking
+              await new Promise((resolve) => setTimeout(resolve, 3000));
             } catch (e: unknown) {
               const err = e as { code?: string; message?: string };
               if (err.code === 'ACTION_REJECTED') {
@@ -102,7 +104,7 @@ export default function NewBookingPage() {
         serviceType: serviceType.trim() || undefined,
         requestDetails: requestDetails.trim() || undefined,
         contactMethod,
-        preferredDates: preferredDate ? [preferredDate] : undefined,
+        preferredDates: preferredDate ? [{ date: preferredDate, timePreference: 'any' }] : undefined,
       });
 
       if (data.success && data.data) {

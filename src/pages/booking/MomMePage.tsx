@@ -115,7 +115,9 @@ export default function MomMePage() {
               const tx = await tokenContract.approve(escrowAddr, approvalAmount);
               toast('Waiting for confirmation...');
               await tx.wait();
-              toast.success('Escrow approved!');
+              toast.success('Escrow approved! Creating booking...');
+              // Wait for RPC to sync the approval before creating booking
+              await new Promise((resolve) => setTimeout(resolve, 3000));
             } catch (e: unknown) {
               const err = e as { code?: string; message?: string };
               if (err.code === 'ACTION_REJECTED') {
@@ -152,14 +154,15 @@ export default function MomMePage() {
     setStep('booking');
 
     // Generate preferred dates
-    const preferredDates: string[] = [];
+    const timePrefMap: Record<string, string> = { Morning: 'morning', Afternoon: 'afternoon', Evening: 'evening' };
+    const preferredDates: { date: string; timePreference: string }[] = [];
     for (let i = 1; i <= 3; i++) {
       const d = new Date();
       d.setDate(d.getDate() + i);
       if (timePreference === 'Morning') d.setHours(9, 0, 0, 0);
       else if (timePreference === 'Afternoon') d.setHours(14, 0, 0, 0);
       else d.setHours(10, 0, 0, 0);
-      preferredDates.push(d.toISOString());
+      preferredDates.push({ date: d.toISOString(), timePreference: timePrefMap[timePreference] || 'any' });
     }
 
     try {
