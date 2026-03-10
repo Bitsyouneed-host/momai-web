@@ -6,9 +6,11 @@ import {
 } from 'lucide-react';
 import GlassCard from '../../components/ui/GlassCard';
 import PrimaryButton from '../../components/ui/PrimaryButton';
+import { ethers } from 'ethers';
 import { searchApi } from '../../api/search';
 import { bookingApi } from '../../api/booking';
 import { useAuthStore } from '../../stores/authStore';
+import { ACTIVE_CHAIN, MOMAI_TOKEN_ADDRESS, ESCROW_CONTRACT_ADDRESS, ERC20_ABI } from '../../lib/contracts';
 import type { SearchResult } from '../../types/search';
 
 type Step = 'input' | 'searching' | 'results' | 'confirm' | 'booking' | 'complete' | 'error';
@@ -94,17 +96,48 @@ export default function MomMePage() {
       const preCheckData = preCheck as unknown as Record<string, unknown>;
       if (!preCheck.success || !preCheckData.canBook) {
         if (preCheckData.code === 'NEEDS_APPROVAL' || preCheckData.needsApproval) {
-          toast('Approving escrow contract...');
-          try {
-            const approveRes = await bookingApi.approveEscrow();
-            const approveData = approveRes.data as unknown as Record<string, unknown>;
-            if (!approveData.success) {
-              toast.error((approveData.message as string) || 'Failed to approve escrow contract');
+          const user = useAuthStore.getState().user;
+          const isExternalWallet = user?.authMethod === 'wallet';
+
+          if (isExternalWallet && window.ethereum) {
+            toast('Please approve the escrow contract in your wallet...');
+            try {
+              const provider = new ethers.BrowserProvider(window.ethereum);
+              const signer = await provider.getSigner();
+              const tokenAddr = MOMAI_TOKEN_ADDRESS[ACTIVE_CHAIN.chainId];
+              const escrowAddr = ESCROW_CONTRACT_ADDRESS[ACTIVE_CHAIN.chainId];
+              if (!tokenAddr || !escrowAddr) {
+                toast.error('Contract addresses not configured for this network');
+                return;
+              }
+              const tokenContract = new ethers.Contract(tokenAddr, ERC20_ABI, signer);
+              const approvalAmount = BigInt(1000) * BigInt(10) ** BigInt(18);
+              const tx = await tokenContract.approve(escrowAddr, approvalAmount);
+              toast('Waiting for confirmation...');
+              await tx.wait();
+              toast.success('Escrow approved!');
+            } catch (e: unknown) {
+              const err = e as { code?: string; message?: string };
+              if (err.code === 'ACTION_REJECTED') {
+                toast.error('Approval rejected by wallet');
+              } else {
+                toast.error(err.message || 'Failed to approve escrow contract');
+              }
               return;
             }
-          } catch {
-            toast.error('Failed to approve escrow contract');
-            return;
+          } else {
+            toast('Approving escrow contract...');
+            try {
+              const approveRes = await bookingApi.approveEscrow();
+              const approveData = approveRes.data as unknown as Record<string, unknown>;
+              if (!approveData.success) {
+                toast.error((approveData.message as string) || 'Failed to approve escrow contract');
+                return;
+              }
+            } catch {
+              toast.error('Failed to approve escrow contract');
+              return;
+            }
           }
         } else {
           toast.error((preCheckData.message as string) || 'Unable to book right now');

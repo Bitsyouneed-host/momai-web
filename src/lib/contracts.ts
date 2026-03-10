@@ -33,6 +33,16 @@ export const USDT_CONTRACT_ADDRESS: Record<number, string> = {
   43114: '0x9702230A8Ea53601f5cD2dc00fDBc13d4dF4A8c7',
 };
 
+export const MOMAI_TOKEN_ADDRESS: Record<number, string> = {
+  43113: '0x9b1341ce9a841318C9e111aFB73F94ef62Efd783', // Fuji
+  43114: '', // Mainnet (not deployed yet)
+};
+
+export const ESCROW_CONTRACT_ADDRESS: Record<number, string> = {
+  43113: '0x0ff2E031c64731eb94828CFf6F9ecB6d8E901187', // Fuji
+  43114: '', // Mainnet (not deployed yet)
+};
+
 // Tier constants matching the contract
 export const TIER_PRO = 1;
 export const TIER_PRO_PLUS = 2;
