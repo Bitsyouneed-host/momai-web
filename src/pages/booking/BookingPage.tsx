@@ -64,14 +64,14 @@ export default function BookingPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-text-primary">MOM AI</h1>
+      <div className="flex items-center gap-3">
         <button
           onClick={() => navigate('/booking/new')}
           className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center shadow-lg hover:shadow-xl hover:bg-primary-dark transition-all"
         >
           <Plus size={20} />
         </button>
+        <h1 className="text-2xl font-bold text-text-primary">MOM AI</h1>
       </div>
 
       {/* MOM ME Hero */}
